@@ -1,17 +1,19 @@
-import { Box, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableRow } from "@suid/material"
-import { accessToken, locationId, updateContactsDb, getFamilies, getContactById } from "../utils/Pocketbase";
-import { JSX, createSignal, createEffect, For } from "solid-js";
+import { Box, Stack } from "@suid/material"
+import { accessToken, locationId, updateContactsDb, getFamilies } from "../utils/Pocketbase";
+import { createSignal, createEffect, For, useContext } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import { RecordModel } from "pocketbase";
 import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger
-} from "~/components/ui/accordion"
+    Card,
+    CardHeader,
+    CardTitle
+} from "~/components/ui/card"
 
 const FamilyList = () => {
     const [contacts, setContacts] = createSignal<any[]>([])
     const [families, setFamilies] = createSignal<RecordModel[]>([])
+    const navigate = useNavigate()
+
     const url = `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&limit=100`
     const getContacts = async (url: string) => {
         const options = {
@@ -42,18 +44,17 @@ const FamilyList = () => {
     })
     return (
         <Box>
-            <For each={families()}>
-                {(row) => (
-                    <>
-                        <Typography>{row.familyName}</Typography>
-                        <For each={row.members}>
-                            {(member) => (
-                                <Typography>{member.firstName}</Typography>
-                            )}
-                        </For>
-                    </>
-                )}
-            </For>
+            <Stack spacing={3}>
+                <For each={families()}>
+                    {(row) => (
+                        <Card onClick={() => navigate(`/family/${row.id}`)}>
+                            <CardHeader>
+                                <CardTitle>{row.familyName}</CardTitle>
+                            </CardHeader>
+                        </Card>
+                    )}
+                </For>
+            </Stack>
         </Box>
     )
 }

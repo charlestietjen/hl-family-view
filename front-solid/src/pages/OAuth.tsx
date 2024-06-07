@@ -1,13 +1,13 @@
 import { createSignal } from 'solid-js'
 import { useSearchParams, useNavigate } from '@solidjs/router'
-import { Typography, CircularProgress, Box, Stack } from '@suid/material'
+import { Typography, CircularProgress, Box } from '@suid/material'
 import { getToken } from '../utils/HighLevel'
 import { storeHlToken } from '../utils/Pocketbase'
 
 const OAuth = () => {
-    const [searchParams, setSearchParams] = useSearchParams()
+    const [searchParams, _setSearchParams] = useSearchParams()
     const navigate = useNavigate()
-    const [tokenState, setTokenState] = createSignal({})
+    const [_tokenState, setTokenState] = createSignal({})
 
     const authCode = searchParams.code
 

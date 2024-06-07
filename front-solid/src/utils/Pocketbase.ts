@@ -45,7 +45,7 @@ export const hlTokenExpired = () => {
     if (!token) {
         return true
     }
-    return Date.now() > token.tokenIssued + token.expires_in * 1000
+    return Date.now() > pb.authStore.model?.tokenIssued + token.expires_in * 1000
 }
 
 export const updateContactsDb = async (contacts: any[]) => {
@@ -68,10 +68,10 @@ export const updateContactsDb = async (contacts: any[]) => {
             }
         }
     })
-    // existingContacts = await pb.collection('contacts').getFullList({ sort: '-created' })
     let existingFamilies = await pb.collection('families').getFullList({ sort: '-created' })
     existingContacts.forEach(async contact => {
-        if (!existingFamilies.find(f => f.familyName === contact.companyName)) {
+        const family = existingFamilies.find(f => f.familyName === contact.companyName)
+        if (!family) {
             try {
                 const record = await pb.collection('families').create({ familyName: contact.companyName, members: [contact.id] })
                 existingFamilies.push(record)
@@ -79,12 +79,14 @@ export const updateContactsDb = async (contacts: any[]) => {
             catch (e) {
                 console.error(e)
             }
-        } else {
+        } else if (!family.members.includes(contact.id)) {
             try {
-                pb.collection('families').update(existingFamilies.find(f => f.familyName === contact.companyName)!.id, { members: [...existingFamilies.find(f => f.familyName === contact.companyName)!.members, contact.id] })
+                await pb.collection('families').update(family!.id, { members: [...family!.members, contact.id] }).then(res => {
+                    existingFamilies[existingFamilies.findIndex(f => f === family)] = res
+                })
             }
             catch (e) {
-                console.error(e)
+                console.error('Family update error', e)
             }
         }
     })
@@ -108,6 +110,17 @@ export const getContactById = async (id: string) => {
         console.error(e)
     }
 }
+
+export const getFamily = async (id: string) => {
+    try {
+        return await pb.collection('families').getOne(id, { expand: 'members' })
+    }
+    catch (e) {
+        console.log(e)
+    }
+}
+
+export const getToken = () => {return pb.authStore.model?.token}
 
 export const accessToken = pb.authStore.model?.token.access_token
 

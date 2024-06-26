@@ -1,8 +1,8 @@
 import { For, createSignal } from 'solid-js'
-import { useParams } from "@solidjs/router"
+import { useParams, useNavigate } from "@solidjs/router"
 import { getFamily } from "../utils/Pocketbase"
 import { RecordModel } from 'pocketbase'
-import { CircularProgress, Typography } from '@suid/material'
+import { CircularProgress, Typography, Button } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
@@ -10,11 +10,17 @@ const FamilyView = () => {
     const [familyData, setFamilyData] = createSignal<RecordModel | undefined>()
     const params = useParams()
     getFamily(params.id).then(family => setFamilyData(family))
+    const navigate = useNavigate()
 
     return (
         <>
             {!familyData() ? (<CircularProgress />) : (
+
                 <Grid cols={1} colsMd={2} colsLg={4} class='w-full gap-7'>
+
+                    <Col span={1} spanLg={4} style={{ display: 'flex' }}>
+                        <Button variant='outlined' size='small' onClick={() => navigate(-1)}>Back</Button>
+                        </Col>
                     <Col span={1} spanLg={2}>
                         <Card>
                             <CardHeader>
@@ -44,7 +50,7 @@ const FamilyView = () => {
                             </>
                         )}
                     </For>
-                    
+
                     <Col spanLg={4}>
                         <Typography variant='h6'>Students</Typography>
                     </Col>

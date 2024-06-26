@@ -4,12 +4,16 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "concurrently \"cd server && pocketbase serve\" \"cd front-solid && npm run dev\""
+    "dev:pb": "concurrently \"cd server && pocketbase serve\" \"cd front-solid && npm run dev\"",
+    "dev": "concurrently \"cd expressserver && npm run dev\" \"cd front-solid && npm run dev\""
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "mongoose": "^8.4.3"
   }
 }

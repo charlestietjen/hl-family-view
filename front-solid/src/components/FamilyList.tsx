@@ -1,6 +1,6 @@
 import { Box, Stack } from "@suid/material"
 import { accessToken, locationId, updateContactsDb, getFamilies } from "../utils/Pocketbase";
-import { createSignal, createEffect, For, useContext } from "solid-js";
+import { createSignal, createEffect, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { RecordModel } from "pocketbase";
 import {

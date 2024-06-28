@@ -1,6 +1,5 @@
-import { For, createSignal } from 'solid-js'
+import { For, createEffect, createSignal } from 'solid-js'
 import { useParams, useNavigate } from "@solidjs/router"
-import { getFamily } from "../utils/Pocketbase"
 import { RecordModel } from 'pocketbase'
 import { CircularProgress, Typography, Button } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
@@ -9,8 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 const FamilyView = () => {
     const [familyData, setFamilyData] = createSignal<RecordModel | undefined>()
     const params = useParams()
-    getFamily(params.id).then(family => setFamilyData(family))
+    
     const navigate = useNavigate()
+
+    createEffect(async () => {
+        if (params.id) {
+            try {
+                const response = await fetch(`/api/family/${params.id}`)
+                const json = await response.json()
+                setFamilyData(json.data)
+            } catch (e) {
+                console.error(e)
+            }
+        }
+    })
 
     return (
         <>
@@ -32,17 +43,17 @@ const FamilyView = () => {
                     <Col spanLg={4}>
                         <Typography variant='h6'>Parents</Typography>
                     </Col>
-                    <For each={familyData()?.expand?.members}>
+                    <For each={familyData()?.contacts}>
                         {(member) => (
                             <>
-                                {member.customFields?.find((c: { id: string }) => c.id === 'rIIeQaw4ZZCod1yS255v')?.value === 'Parent' && (
+                                {member.contactType === 'Parent' && (
                                     <Col spanLg={1}>
                                         <Card>
                                             <CardHeader>
-                                                <CardTitle>{`${member.firstNameRaw} ${member.lastNameRaw}`}</CardTitle>
+                                                <CardTitle>{`${member.firstName} ${member.lastName}`}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                {`Payment Provider: ${member.customFields?.find((c: { id: string }) => c.id === 'uJVJnjgqvd8uqk7FezmK')?.value}`}
+                                                {`Payment Provider: ${member.paymentProvider}`}
                                             </CardContent>
                                         </Card>
                                     </Col>
@@ -54,17 +65,17 @@ const FamilyView = () => {
                     <Col spanLg={4}>
                         <Typography variant='h6'>Students</Typography>
                     </Col>
-                    <For each={familyData()?.expand?.members}>
+                    <For each={familyData()?.contacts}>
                         {(member) => (
                             <>
-                                {member.customFields?.find((c: { id: string }) => c.id === 'rIIeQaw4ZZCod1yS255v')?.value === 'Student' && (
+                                {member.contactType === 'Student' && (
                                     <Col spanLg={1}>
                                         <Card>
                                             <CardHeader>
-                                                <CardTitle>{`${member.firstNameRaw} ${member.lastNameRaw}`}</CardTitle>
+                                                <CardTitle>{`${member.firstName} ${member.lastName}`}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                {`Program: ${member.customFields?.find((c: { id: string }) => c.id === 'jBtLbGspnLx9TqayycX4')?.value}`}
+                                                {`Program: ${member.program}`}
                                             </CardContent>
                                         </Card>
                                     </Col>

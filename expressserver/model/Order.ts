@@ -22,6 +22,7 @@ const orderSchema = new Schema({
     sourceCampaign: { type: String },
     dateAdded: { type: Date },
     dateUpdated: { type: Date },
+    orderId: { type: String, unique: true, required: true, index: true },
 })
 
 export const Order = mongoose.model('Order', orderSchema)

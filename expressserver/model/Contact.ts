@@ -1,20 +1,35 @@
 import mongoose, { Schema } from 'mongoose'
-import { Order } from './Order'
 
 const contactSchema = new Schema({
-    id: { type: String, required: true, unique: true },
+    contactId: { type: String, required: true, unique: true },
     locationId: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    timezone: { type: String },
-    country: { type: String },
+    firstName: { type: String },
+    lastName: { type: String },
     source: { type: String },
     dateAdded: { type: Date },
-    customFields: { type: [String] },
+    customFields: { type: [{}] },
     tags: { type: [String] },
     businessId: { type: String },
     contactType: { type: String },
     program: { type: String },
-    orders: { type: [Order] },
-})
+    companyName: { type: String },
+    paymentProvider: { type: String },
+},
+    {
+        virtuals: {
+            orders: {
+                options: {
+                    ref: 'Order',
+                    localField: 'contactId',
+                    foreignField: 'contactId',
+                    justOne: false
+                }
+            }
+        },
+        toJSON: {
+            virtuals: true
+        }
+    })
 
 export const Contact = mongoose.model('Contact', contactSchema)

@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose'
 
 const tokenSchema = new Schema({
-    auth_code: { type: String, required: true },
+    authCode: { type: String, required: true },
     tokenIssued: { type: Number, default: Date.now },
     access_token: { type: String, required: true },
     token_type: { type: String },

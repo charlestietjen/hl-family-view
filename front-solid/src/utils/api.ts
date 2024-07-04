@@ -1,7 +1,7 @@
 export const getToken = async () => {
     const res = await fetch('/api/token')
     const token = await res.json()
-    console.log(token.data)
+    // console.log(token.data)
     if (!token) {
         return
     }

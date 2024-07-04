@@ -23,6 +23,25 @@ const orderSchema = new Schema({
     dateAdded: { type: Date },
     dateUpdated: { type: Date },
     orderId: { type: String, unique: true, required: true, index: true },
-})
+    product: { type: String },
+    productId: { type: String },
+    createdAt: { type: String },
+    updatedAt: { type: String },
+},
+    {
+        virtuals: {
+            transactions: {
+                options: {
+                    ref: 'Transaction',
+                    localField: 'orderId',
+                    foreignField: 'entityId',
+                    justOne: false
+                }
+            }
+        },
+        toJSON: {
+            virtuals: true
+        }
+    })
 
 export const Order = mongoose.model('Order', orderSchema)

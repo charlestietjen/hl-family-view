@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose'
 const contactSchema = new Schema({
     contactId: { type: String, required: true, unique: true },
     locationId: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String },
     firstName: { type: String },
     lastName: { type: String },
     source: { type: String },
@@ -15,12 +15,21 @@ const contactSchema = new Schema({
     program: { type: String },
     companyName: { type: String },
     paymentProvider: { type: String },
+    campDates: { type: [Date] },
 },
     {
         virtuals: {
             orders: {
                 options: {
                     ref: 'Order',
+                    localField: 'contactId',
+                    foreignField: 'contactId',
+                    justOne: false
+                }
+            },
+            transactions: {
+                options: {
+                    ref: 'Transaction',
                     localField: 'contactId',
                     foreignField: 'contactId',
                     justOne: false

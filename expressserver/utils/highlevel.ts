@@ -1,7 +1,10 @@
 import { db } from './db'
 import { Token, Contact, Family, Order } from '../model/'
+import { Transaction } from '../model/Transaction';
 
 interface contact {
+    [key: string]: any;
+    campDates: null;
     id: any;
     contactId: string;
     customFields: [{ value: String | null }];
@@ -75,24 +78,28 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
 
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            console.log("Fetch error: ", response)
+            return
+        }
         let data = await response.json();
         const contacts: [contact] = data.contacts.map((contact: contact) => {
             let contactType: String | null = null
             let program: String | null = null
             let paymentProvider: String | null = null
+            let campDates: Date[] | null = null
             contact.customFields.forEach((field: { value: String | null }) => {
                 if (field.value === 'Parent' || field.value === 'Student') {
                     contactType = field.value
                 }
-            })
-            contact.customFields.forEach((field: { value: String | null }) => {
+                if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
+                    paymentProvider = field.value
+                }
                 if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
                     program = field.value
                 }
-            })
-            contact.customFields.forEach((field: { value: String | null }) => {
-                if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
-                    paymentProvider = field.value
+                if (field.value?.startsWith('camp_')) {
+                    campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
                 }
             })
             if (!contactType) {
@@ -111,8 +118,9 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
                 tags: contact.tags,
                 businessId: contact.businessId,
                 contactType: contactType,
-                program: program,
-                paymentProvider: paymentProvider,
+                program: program || 'Unknown',
+                paymentProvider: paymentProvider || 'Unknown',
+                campDates: campDates || null
             }
         })
         while (data.meta?.nextPageUrl) {
@@ -122,19 +130,19 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
                 let contactType: String | null = null
                 let program: String | null = null
                 let paymentProvider: String | null = null
+                let campDates: Date[] | null = null
                 contact.customFields.forEach((field: { value: String | null }) => {
                     if (field.value === 'Parent' || field.value === 'Student') {
                         contactType = field.value
                     }
-                })
-                contact.customFields.forEach((field: { value: String | null }) => {
+                    if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
+                        paymentProvider = field.value
+                    }
                     if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
                         program = field.value
                     }
-                })
-                contact.customFields.forEach((field: { value: String | null }) => {
-                    if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
-                        paymentProvider = field.value
+                    if (field.value?.startsWith('camp_')) {
+                        campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
                     }
                 })
                 if (!contactType) {
@@ -153,8 +161,9 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
                     tags: contact.tags,
                     businessId: contact.businessId,
                     contactType: contactType,
-                    program: program,
-                    paymentProvider: paymentProvider,
+                    program: program || 'Unknown',
+                    paymentProvider: paymentProvider || 'Unknown',
+                    campDates: campDates || null
                 }
             })
             contacts.push(...newContacts)
@@ -163,7 +172,24 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
         const filteredContacts = contacts.filter(c => c)
         try {
             const existingContacts = await Contact.find()
+            existingContacts.forEach(async contact => {
+                try {
+                    contact.set(filteredContacts.find(c => c.contactId === contact.contactId) || {})
+                    contact.save()
+                } catch (error) {
+                    console.log(error)
+                }
+            })
             const newContacts = filteredContacts.filter(c => !existingContacts.find(contact => contact.contactId === c.contactId))
+            const contactsToUpdate = filteredContacts.map(contact => {
+                const existingContact: any = existingContacts.find(c => c.contactId === contact.contactId)
+                if (existingContact && Object.keys(contact).some(key => contact[key] != existingContact[key])) {
+                    // console.log(contact, existingContact)
+                    return contact;
+                }
+                return;
+            })
+            // console.log(contactsToUpdate)
             const contactRecords = await Contact.create(newContacts)
             const families = filteredContacts.map(c => (c.companyName))
             const uniqueFamilies = Array.from(new Set(families));
@@ -195,10 +221,59 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
                 orderData = _orderData
             }
             const existingOrders = await Order.find()
-            const newOrders = orders.filter((o: {
+            let newOrders = orders.filter((o: {
                 orderId: string;
             }) => !existingOrders.find(order => order.orderId === o.orderId))
+            const promises = newOrders.map(async (order: any, i: string | number) => {
+                const url = `https://services.leadconnectorhq.com/payments/orders/${order.orderId}?altId=${token.locationId}&altType=location`;
+                const options = {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+                };
+
+                try {
+                    const response = await fetch(url, options);
+                    const data = await response.json();
+                    newOrders[i] = { ...order, product: data.items[0].product.name, productId: data.items[0].product._id, createdAt: data.createdAt, updatedAt: data.updatedAt }
+                    // console.log(newOrders[i])
+                } catch (error) {
+                    console.error(error);
+                }
+            })
+            await Promise.all(promises)
             const orderRecords = await Order.create(newOrders)
+            // console.log(newOrders)
+            try {
+                const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
+                const options = {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+                };
+
+                try {
+                    const response = await fetch(url, options);
+                    const { data } = await response.json();
+                    while (data.meta?.nextPageUrl) {
+                        const response = await fetch(data.meta.nextPageUrl, options);
+                        const _data = await response.json();
+                        data.push(..._data.data)
+                        data.meta = _data.meta
+                    }
+                    const existingTransactions = await Transaction.find()
+                    const newTransactions = existingTransactions.filter(t => !data.find((transaction: { _id: string; }) => transaction._id === t.transactionId))
+                    const formattedTransactions = newTransactions.map((transaction:any) => {
+                        return { ...transaction, transactionId: transaction._id }
+                    })
+                    await Transaction.create(formattedTransactions)
+                } catch (error) {
+                    console.error(error);
+                }
+            } catch (error) {
+                console.log(error)
+            }
+
+
+
 
             return { contactRecords, familyRecords, orderRecords }
         } catch (error) {

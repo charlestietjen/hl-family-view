@@ -1,14 +1,53 @@
 import { For, createEffect, createSignal } from 'solid-js'
 import { useParams, useNavigate } from "@solidjs/router"
-import { RecordModel } from 'pocketbase'
 import { CircularProgress, Typography, Button } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Table, TableHeader, TableHead, TableCell, TableRow, TableBody } from '~/components/ui/table'
+import dayjs from 'dayjs'
+
+interface contact {
+    _id: string,
+    firstName: string,
+    lastName: string,
+    contactId: string,
+    contactType: string,
+    paymentProvider?: string,
+    program?: string,
+    orders?: [{
+        orderId: string,
+        product: string,
+        date: string,
+        subtotal: string,
+        status: string,
+        createdAt: string,
+        updatedAt: string,
+    }],
+    transactions?: [{
+        transactionId: string,
+        contactId: string,
+        contactName: string,
+        contactEmail: string,
+        currency: string,
+        amount: string,
+        status: string,
+        liveMode: string,
+        entityType: string,
+        entityId: string,
+        entitySourceType: string,
+        entitySourceSubType: string,
+        entitySourceName: string,
+        entitySourceId: string,
+        paymentProviderType: string,
+        createdAt: string,
+        updatedAt: string,
+    }]
+}
 
 const FamilyView = () => {
-    const [familyData, setFamilyData] = createSignal<RecordModel | undefined>()
+    const [familyData, setFamilyData] = createSignal<{ _id: string, familyName: string, contacts: [contact] }>()
     const params = useParams()
-    
+
     const navigate = useNavigate()
 
     createEffect(async () => {
@@ -31,7 +70,7 @@ const FamilyView = () => {
 
                     <Col span={1} spanLg={4} style={{ display: 'flex' }}>
                         <Button variant='outlined' size='small' onClick={() => navigate(-1)}>Back</Button>
-                        </Col>
+                    </Col>
                     <Col span={1} spanLg={2}>
                         <Card>
                             <CardHeader>
@@ -44,16 +83,16 @@ const FamilyView = () => {
                         <Typography variant='h6'>Parents</Typography>
                     </Col>
                     <For each={familyData()?.contacts}>
-                        {(member) => (
+                        {(contact) => (
                             <>
-                                {member.contactType === 'Parent' && (
+                                {contact.contactType === 'Parent' && (
                                     <Col spanLg={1}>
                                         <Card>
                                             <CardHeader>
-                                                <CardTitle>{`${member.firstName} ${member.lastName}`}</CardTitle>
+                                                <CardTitle>{`${contact.firstName} ${contact.lastName}`}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                {`Payment Provider: ${member.paymentProvider}`}
+                                                {`Payment Provider: ${contact.paymentProvider}`}
                                             </CardContent>
                                         </Card>
                                     </Col>
@@ -66,16 +105,16 @@ const FamilyView = () => {
                         <Typography variant='h6'>Students</Typography>
                     </Col>
                     <For each={familyData()?.contacts}>
-                        {(member) => (
+                        {(contact) => (
                             <>
-                                {member.contactType === 'Student' && (
+                                {contact.contactType === 'Student' && (
                                     <Col spanLg={1}>
                                         <Card>
                                             <CardHeader>
-                                                <CardTitle>{`${member.firstName} ${member.lastName}`}</CardTitle>
+                                                <CardTitle>{`${contact.firstName} ${contact.lastName}`}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
-                                                {`Program: ${member.program}`}
+                                                {`Program: ${contact.program}`}
                                             </CardContent>
                                         </Card>
                                     </Col>
@@ -83,7 +122,50 @@ const FamilyView = () => {
                             </>
                         )}
                     </For>
-                </Grid>
+                    <Col spanLg={4}>
+                        <Typography variant='h6'>Order History</Typography>
+                        <Col spanLg={1}>
+                            <Card>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Order ID</TableHead>
+                                            <TableHead>Date Created</TableHead>
+                                            <TableHead>Last Updated</TableHead>
+                                            <TableHead>Product</TableHead>
+                                            <TableHead>Subtotal</TableHead>
+                                            <TableHead>Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <For each={familyData()?.contacts}>
+                                            {(member) => (
+                                                <>
+                                                {member.contactType === 'Parent' && member.transactions!.length > 0 && (
+                                                        
+                                                        <For each={member.transactions}>
+                                                            {(order) => (
+                                                                <TableRow>
+                                                                    <TableCell class='text-left'>{order.transactionId}</TableCell>
+                                                                    <TableCell class='text-left'>{dayjs(order.createdAt).format('DD/MMM/YYYY')}</TableCell>
+                                                                    <TableCell class='text-left'>{dayjs(order.updatedAt).format('DD/MMM/YYYY')}</TableCell>
+                                                                    <TableCell class='text-left'>{order.entitySourceName}</TableCell>
+                                                                    <TableCell class='text-left'>{order.amount}</TableCell>
+                                                                    <TableCell class='text-left'>{order.status}</TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                        </For>
+                                                    )
+                                                }
+                                                </>
+                                            )}
+                                        </For>
+                                    </TableBody>
+                                </Table>
+                            </Card>
+                        </Col>
+                    </Col>
+                </Grid >
             )}
         </>
     )

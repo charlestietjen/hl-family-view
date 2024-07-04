@@ -1,25 +1,28 @@
-import { createSignal, createContext, JSX, useContext } from 'solid-js'
+import { createContext, JSX, useContext, createEffect } from 'solid-js'
+import { createStore } from 'solid-js/store'
 
-export const FamilyContext = createContext([[], {}])
+const FamilyContext = createContext()
 
 export function FamilyProvider(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined }) {
-    const [families, setFamilies] = createSignal([]),
-        entries = [
-            families,
-            {
-                setFamilies(families: any) {
-                    setFamilies(families)
-                }
-            }
-        ]
+    const [families, setFamilies] = createStore()
+
+    createEffect(async () => {
+        const response = await fetch('/api/families')
+        const data = await response.json()
+        setFamilies(data.data)
+    })
 
     return (
-        <FamilyContext.Provider value={entries}>
+        <FamilyContext.Provider value={families}>
             {props.children}
         </FamilyContext.Provider>
     )
 }
 
 export function useFamilies() {
-    return useContext(FamilyContext)
+    const context = useContext(FamilyContext)
+    if (!context){
+        throw new Error('useFamilies must be used within a FamilyProvider')
+    }
+    return context
 }

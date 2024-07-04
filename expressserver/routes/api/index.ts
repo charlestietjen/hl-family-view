@@ -35,6 +35,7 @@ router.route("/api/token")
         res.status(200).json({ data: records[0] })
     })
     .post(async (req: any, res: any) => {
+        console.log(req.body)
         if (!req.body) {
             res.status(400).json({ message: "Missing body and/or token" })
             return
@@ -81,7 +82,7 @@ router.route("/api/contacts")
     router.route("/api/families")
     .get(async (req: any, res: any) => {
         try {
-            const records = await Family.find().populate('contacts')
+            const records = await Family.find().populate({ path: 'contacts', populate: { path: 'transactions' } })
             res.status(200).json({ data: records })
         } catch (e) {
             res.status(400).json({ e })
@@ -90,7 +91,7 @@ router.route("/api/contacts")
 
     router.route("/api/family/:id")
     .get(async (req: any, res: any) => {
-        let existingRecord = await Family.findOne({ _id: req.params.id }).populate('contacts')
+        let existingRecord = await Family.findOne({ _id: req.params.id }).populate({ path: 'contacts', populate: { path: 'transactions' } })
         if (existingRecord) {
             res.status(200).json({ data: existingRecord })
             return

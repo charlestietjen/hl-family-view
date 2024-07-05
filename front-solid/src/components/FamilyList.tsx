@@ -1,15 +1,16 @@
-import { Box, CardContent, List, ListItem, Typography } from "@suid/material"
+import { Box } from "@suid/material"
 import { createSignal, createEffect, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import {
-    Card,
-    CardHeader,
-    CardTitle,
-} from "~/components/ui/card"
-import { Grid } from "./ui/grid";
+// import {
+//     Card,
+//     CardHeader,
+//     CardTitle,
+// } from "~/components/ui/card"
+// import { Grid } from "./ui/grid";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 const FamilyList = () => {
-    const [families, setFamilies] = createSignal<Array<{_id: string, familyName: string, contacts: [{firstName: string, contactType: string}]}>>()
+    const [families, setFamilies] = createSignal<Array<{ _id: string, familyName: string, contacts: [{ firstName: string, lastName: string, contactType: string }] }>>()
     const navigate = useNavigate()
 
     createEffect(async () => {
@@ -20,8 +21,38 @@ const FamilyList = () => {
 
     return (
         <Box>
-            {/* <Stack spacing={3}> */}
-            <Grid cols={3}>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Family Name</TableHead>
+                        <TableHead>Contact Name</TableHead>
+                        <TableHead>Contact Type</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <For each={families()}>
+                        {(row) => 
+                            {
+                                const sortedRows = row.contacts.sort((a, b) => a.contactType.localeCompare(b.contactType))
+                                return(
+                            <>
+                            <For each={sortedRows}>
+                                {(member) => (
+                                    <TableRow onClick={() => navigate(`/family/${row._id}`)} style={{ cursor: 'pointer' }}>
+                                        <TableCell class='text-left'>{row.familyName}</TableCell>
+                                        <TableCell class='text-left'>{member.firstName} {member.lastName}</TableCell>
+                                        <TableCell class='text-left'>{member.contactType}</TableCell>
+                                    </TableRow>
+                                )}
+                            </For>
+                            </>)
+                            }
+                        }
+                </For>
+            </TableBody>
+        </Table>
+            {/* <Stack spacing={3}> */ }
+    {/* <Grid cols={3}>
                 <For each={families()}>
                     {(row) => (
                         <Card onClick={() => navigate(`/family/${row._id}`)} style={{ cursor: 'pointer', width: '90%' }}>
@@ -49,9 +80,9 @@ const FamilyList = () => {
                         </Card>
                     )}
                 </For>
-            </Grid>
-            {/* </Stack> */}
-        </Box>
+            </Grid> */}
+    {/* </Stack> */ }
+        </Box >
     )
 }
 

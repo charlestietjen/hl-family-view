@@ -1,4 +1,4 @@
-import { Token, Contact, Family } from '../../model'
+import { Token, Contact, Family, Calendar, CalendarEvent, Campaign, Conversation, Opportunity, Product, Transaction, Order } from '../../model'
 import express from 'express'
 import { initializeDb } from '../../utils/highlevel'
 export const router = express.Router()
@@ -35,7 +35,7 @@ router.route("/api/token")
         res.status(200).json({ data: records[0] })
     })
     .post(async (req: any, res: any) => {
-        console.log(req.body)
+        // console.log(req.body)
         if (!req.body) {
             res.status(400).json({ message: "Missing body and/or token" })
             return
@@ -79,19 +79,37 @@ router.route("/api/contacts")
         }
     })
 
-    router.route("/api/families")
+router.route("/api/families")
     .get(async (req: any, res: any) => {
         try {
-            const records = await Family.find().populate({ path: 'contacts', populate: { path: 'transactions' } })
+            const records = await Family.find().populate(
+                {
+                    path: 'contacts',
+                    populate: [
+                        { path: 'transactions' },
+                        { path: 'orders' },
+                        { path: 'calendarEvents' },
+                        { path: 'conversations' },
+                        { path: 'opportunities' }]
+                })
             res.status(200).json({ data: records })
         } catch (e) {
             res.status(400).json({ e })
         }
     })
 
-    router.route("/api/family/:id")
+router.route("/api/family/:id")
     .get(async (req: any, res: any) => {
-        let existingRecord = await Family.findOne({ _id: req.params.id }).populate({ path: 'contacts', populate: { path: 'transactions' } })
+        let existingRecord = await Family.findOne({ _id: req.params.id }).populate(
+            {
+                path: 'contacts',
+                populate: [
+                    { path: 'transactions' },
+                    { path: 'orders' },
+                    { path: 'calendarEvents' },
+                    { path: 'conversations' },
+                    { path: 'opportunities' }]
+            })
         if (existingRecord) {
             res.status(200).json({ data: existingRecord })
             return
@@ -108,3 +126,51 @@ router.route("/api/intializeDb").post(async (req: any, res: any) => {
     }
     res.status(400).json({ data })
 })
+
+router.route("/api/calendars")
+    .get(async (req: any, res: any) => {
+        const records = await Calendar.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/calendarevents/")
+    .get(async (req: any, res: any) => {
+        const records = await CalendarEvent.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/campaigns")
+    .get(async (req: any, res: any) => {
+        const records = await Campaign.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/conversations")
+    .get(async (req: any, res: any) => {
+        const records = await Conversation.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/opportunities")
+    .get(async (req: any, res: any) => {
+        const records = await Opportunity.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/orders")
+    .get(async (req: any, res: any) => {
+        const records = await Order.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/products")
+    .get(async (req: any, res: any) => {
+        const records = await Product.find()
+        res.status(200).json({ data: records })
+    })
+
+router.route("/api/transactions")
+    .get(async (req: any, res: any) => {
+        const records = await Transaction.find()
+        res.status(200).json({ data: records })
+    })

@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "concurrently \"tsc --watch\" \"nodemon ./dist/main.js\"",
-    "build": "tsc --build && copy package.json dist\\package.json",
+    "build": "del /Q dist && tsc --build && copy package.json dist\\package.json",
     "start": "node ./main.js"
   },
   "keywords": [],
@@ -14,7 +14,8 @@
   "description": "",
   "dependencies": {
     "express": "^4.19.2",
-    "mongoose": "^8.4.3"
+    "mongoose": "^8.4.3",
+    "stripe": "^16.1.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

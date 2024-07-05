@@ -1,4 +1,24 @@
-import mongoose, { Schema } from 'mongoose'
+import mongoose, { Schema, Document } from 'mongoose'
+
+interface ITransaction extends Document {
+    transactionId: string
+    contactId: string
+    contactName: string
+    contactEmail: string
+    currency: string
+    amount: string
+    status: string
+    liveMode: string
+    entityType: string
+    entityId: string
+    entitySourceType: string
+    entitySourceSubType: string
+    entitySourceName: string
+    entitySourceId: string
+    paymentProviderType: string
+    createdAt: string
+    updatedAt: string
+}
 
 const transactionSchema = new Schema({
     transactionId: { type: String, required: true, unique: true, index: true },
@@ -20,4 +40,4 @@ const transactionSchema = new Schema({
     updatedAt: { type: String },
 })
 
-export const Transaction = mongoose.model('Transaction', transactionSchema)
+export const Transaction = mongoose.model<ITransaction>('Transaction', transactionSchema)

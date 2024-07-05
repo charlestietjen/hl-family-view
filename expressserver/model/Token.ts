@@ -1,4 +1,20 @@
-import mongoose, { Schema } from 'mongoose'
+import mongoose, { Schema, Document } from 'mongoose'
+
+interface IToken extends Document {
+    authCode: string
+    tokenIssued: number
+    access_token: string
+    token_type: string
+    expires_in: number
+    refresh_token: string
+    scope: string
+    userType: string
+    locationId: string
+    companyId: string
+    approvedLocations: string[]
+    userId: string
+    planId: string
+}
 
 const tokenSchema = new Schema({
     authCode: { type: String, required: true },
@@ -16,4 +32,4 @@ const tokenSchema = new Schema({
     planId: { type: String },
 })
 
-export const Token = mongoose.model('Token', tokenSchema)
+export const Token = mongoose.model<IToken>('Token', tokenSchema)

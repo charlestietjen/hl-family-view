@@ -1,4 +1,33 @@
-import mongoose, { Schema } from 'mongoose'
+import mongoose, { Schema, Document } from 'mongoose'
+
+interface IOrder extends Document {
+    altId: string
+    altType: string
+    contactId: string
+    contactName: string
+    contactEmail: string
+    currency: string
+    amount: string
+    subtotal: string
+    discount: string
+    status: string
+    liveMode: string
+    totalProducts: string
+    sourceType: string
+    sourceName: string
+    sourceId: string
+    sourceUrl: string
+    sourceReferrer: string
+    sourceMedium: string
+    sourceCampaign: string
+    dateAdded: Date
+    dateUpdated: Date
+    orderId: string
+    product: string
+    productId: string
+    createdAt: string
+    updatedAt: string
+}
 
 const orderSchema = new Schema({
     altId: { type: String, required: true },
@@ -44,4 +73,4 @@ const orderSchema = new Schema({
         }
     })
 
-export const Order = mongoose.model('Order', orderSchema)
+export const Order = mongoose.model<IOrder>('Order', orderSchema)

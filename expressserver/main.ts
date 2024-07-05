@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import { router } from './routes/api/index'
 import { connectDb, db } from './utils/db'
 import { timedAuthRefresh, timedDbReinitialize } from './utils/scheduled'
+// import { initStripe } from './utils/stripe'
 
 dotenv.config()
 const app = express()
@@ -13,6 +14,9 @@ connectDb()
 timedAuthRefresh()
 // pre-webhook db update method
 timedDbReinitialize()
+
+// successful stripe integration test
+// initStripe().then((res: any) => console.log(res))
 
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))

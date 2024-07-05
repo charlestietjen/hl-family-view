@@ -1,6 +1,8 @@
 import { db } from './db'
-import { Token, Contact, Family, Order } from '../model/'
+import { Token, Contact, Family, Order, CalendarEvent, Calendar, Conversation, Opportunity, Product, Campaign } from '../model/'
 import { Transaction } from '../model/Transaction';
+import { Document, Types } from 'mongoose';
+import { setTimeout } from 'timers/promises';
 
 interface contact {
     [key: string]: any;
@@ -68,8 +70,164 @@ export const refreshToken = async () => {
 }
 
 export const initializeDb = async (_token: { locationId: String, access_token: String }): Promise<any> => {
-    const tokenRecords: any = await Token.find()
-    const token: any = tokenRecords ? tokenRecords[0] : null
+    const [token] = await Token.find()
+
+    const rawContacts = await getContacts(token) || []
+    const formattedContacts = rawContacts.map((contact: contact) => {
+        let contactType: String | null = null
+        let program: String | null = null
+        let paymentProvider: String | null = null
+        let campDates: Date[] | null = null
+        contact.customFields?.forEach((field: { value: String | null }) => {
+            if (field.value === 'Parent' || field.value === 'Student') {
+                contactType = field.value
+            }
+            if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
+                paymentProvider = field.value
+            }
+            if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
+                program = field.value
+            }
+            if (field.value?.startsWith('camp_')) {
+                campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
+            }
+        })
+        if (!contactType) {
+            return
+        }
+        return {
+            contactId: contact.id,
+            companyName: contact.companyName,
+            firstName: contact.firstNameRaw,
+            lastName: contact.lastNameRaw,
+            email: contact.email,
+            locationId: contact.locationId,
+            source: contact.source,
+            dateAdded: contact.dateAdded,
+            customFields: contact.customFields,
+            tags: contact.tags,
+            businessId: contact.businessId,
+            contactType: contactType,
+            program: program || 'Unknown',
+            paymentProvider: paymentProvider || 'Unknown',
+            campDates: campDates || null
+        }
+    })
+    const filteredContacts = formattedContacts.filter((c: any) => c)
+    getOpportunities(token)
+    await setTimeout(500)
+    getConversations(token)
+    await setTimeout(500)
+    const calendars = await getCalendars(token) || []
+    await setTimeout(500)
+    getCalendarEvents(token, calendars)
+    await setTimeout(500)
+    getProducts(token)
+    await setTimeout(500)
+    getCampaigns(token)
+    try {
+        const existingContacts = await Contact.find()
+        existingContacts.forEach(async contact => {
+            try {
+                contact.set(filteredContacts.find((c: { contactId: string; }) => c.contactId === contact.contactId) || {})
+                contact.save()
+            } catch (error) {
+                console.log(error)
+            }
+        })
+        const newContacts = filteredContacts.filter((c: { contactId: string; }) => !existingContacts.find(contact => contact.contactId === c.contactId))
+        const contactRecords = await Contact.create(newContacts)
+        const families = filteredContacts.map((c: { companyName: any; }) => (c.companyName))
+        const uniqueFamilies = Array.from(new Set(families));
+        const familyData = uniqueFamilies.map(family => {
+            return { familyName: family }
+        })
+        const existingFamilies = await Family.find()
+        const newFamilies = familyData.filter(f => !existingFamilies.find(family => family.familyName === f.familyName))
+        const familyRecords = await Family.create(newFamilies)
+
+        const url = `https://services.leadconnectorhq.com/payments/orders?altId=${token.locationId}&altType=location`;
+        const options = {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+        };
+
+        const orderResponse = await fetch(url, options);
+        let { orders = [], meta = {} } = await orderResponse.json();
+        const orderData = orders.map((order: { _id: String; }) => {
+            return { ...order, orderId: order._id }
+        })
+        while (meta?.nextPageUrl) {
+            const orderResponse = await fetch(orderData.meta.nextPageUrl, options);
+            const _orderData = await orderResponse.json();
+            const newOrders = _orderData.data.map((order: { _id: String; }) => {
+                return { ...order, orderId: order._id }
+            })
+            orders.push(...newOrders)
+            meta = _orderData.meta
+        }
+        const existingOrders = await Order.find()
+        let newOrders = orders.filter((o: {
+            orderId: string;
+        }) => !existingOrders.find(order => order.orderId === o.orderId))
+        const promises = newOrders.map(async (order: any, i: string | number) => {
+            const url = `https://services.leadconnectorhq.com/payments/orders/${order.orderId}?altId=${token.locationId}&altType=location`;
+            const options = {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+            };
+
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+                newOrders[i] = { ...order, product: data.items[0].product.name, productId: data.items[0].product._id, createdAt: data.createdAt, updatedAt: data.updatedAt }
+                // console.log(newOrders[i])
+            } catch (error) {
+                console.error(error);
+            }
+        })
+        await Promise.all(promises)
+        const orderRecords = await Order.create(newOrders)
+        // console.log(newOrders)
+        try {
+            const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
+            const options = {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+            };
+
+            try {
+                const response = await fetch(url, options);
+                let { orders = [], meta = {} } = await response.json();
+                while (meta?.nextPageUrl) {
+                    const response = await fetch(meta.nextPageUrl, options);
+                    const { orders: _orders = [], meta: _meta = {}} = await response.json();
+                    orders.push(..._orders)
+                    meta = _meta
+                }
+                const existingTransactions = await Transaction.find()
+                const newTransactions = orders.filter((t: any) => !existingTransactions.find(transaction => transaction.transactionId === t._id))
+                const formattedTransactions = newTransactions.map((transaction: any) => {
+                    return { ...transaction, transactionId: transaction._id }
+                })
+                await Transaction.create(formattedTransactions)
+            } catch (error) {
+                console.error(error);
+            }
+        } catch (error) {
+            console.log(error)
+        }
+
+
+
+
+        return { contactRecords, familyRecords, orderRecords }
+    } catch (error) {
+        throw error
+    }
+}
+
+const getContacts = async (token: { access_token: string; locationId: string; }) => {
     const url = `https://services.leadconnectorhq.com/contacts/?locationId=${token.locationId}&limit=100`;
     const options = {
         method: 'GET',
@@ -82,205 +240,247 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
             console.log("Fetch error: ", response)
             return
         }
-        let data = await response.json();
-        const contacts: [contact] = data.contacts.map((contact: contact) => {
-            let contactType: String | null = null
-            let program: String | null = null
-            let paymentProvider: String | null = null
-            let campDates: Date[] | null = null
-            contact.customFields.forEach((field: { value: String | null }) => {
-                if (field.value === 'Parent' || field.value === 'Student') {
-                    contactType = field.value
-                }
-                if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
-                    paymentProvider = field.value
-                }
-                if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
-                    program = field.value
-                }
-                if (field.value?.startsWith('camp_')) {
-                    campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
-                }
-            })
-            if (!contactType) {
-                return
+        let { contacts, meta } = await response.json();
+        while (meta.nextPageUrl) {
+            const response = await fetch(meta.nextPageUrl, options);
+            const {contacts: _contacts = [], meta: _meta = {}} = await response.json();
+            contacts.push(..._contacts)
+            meta = _meta
+        }
+        return contacts || []
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+const getOpportunities = async (token: { access_token: string; locationId: string; }) => {
+    const contacts = await Contact.find()
+    const opportunities: any[] = []
+    const promises = contacts.map(async contact => {
+        const url = `https://services.leadconnectorhq.com/opportunities/search?location_id=${token.locationId}&contact_id=${contact.contactId}`;
+        const options = {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+        };
+
+        try {
+            await setTimeout(1000)
+            const response = await fetch(url, options);
+            const { opportunities } = await response.json();
+            if (!opportunities) return
+            opportunities.push(...opportunities)
+            // console.log(contact.firstName, data)
+        } catch (error) {
+            console.error(error);
+        }
+    })
+    await Promise.all(promises)
+    const existingOpportunities = await Opportunity.find()
+    const formattedOpportunities = opportunities.map((opportunity: any) => {
+        return { ...opportunity, opportunityId: opportunity.id }
+    })
+    const newOpportunities = formattedOpportunities.filter((o: any) => !existingOpportunities.find(opportunity => opportunity.opportunityId === o.opportunityId))
+    await Opportunity.create(newOpportunities)
+    existingOpportunities.forEach((opp: any) => {
+        const newRecord = formattedOpportunities.find((o: any) => o.opportunityId === opp.opportunityId)
+        if (newRecord) {
+            opp.set(newRecord)
+            opp.save()
+        }
+    })
+}
+
+const getConversations = async (token: { access_token: string; locationId: string; }) => {
+    const contacts = await Contact.find()
+    const conversationsData: any[] = []
+    const promises = contacts.map(async contact => {
+        const url = `https://services.leadconnectorhq.com/conversations/search?locationId=${token.locationId}&contactId=${contact.contactId}`;
+        const options = {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token.access_token}`,
+                Version: '2021-04-15',
+                Accept: 'application/json'
             }
-            return {
-                contactId: contact.id,
-                companyName: contact.companyName,
-                firstName: contact.firstNameRaw,
-                lastName: contact.lastNameRaw,
-                email: contact.email,
-                locationId: contact.locationId,
-                source: contact.source,
-                dateAdded: contact.dateAdded,
-                customFields: contact.customFields,
-                tags: contact.tags,
-                businessId: contact.businessId,
-                contactType: contactType,
-                program: program || 'Unknown',
-                paymentProvider: paymentProvider || 'Unknown',
-                campDates: campDates || null
+        };
+
+        try {
+            await setTimeout(1000)
+            const response = await fetch(url, options);
+            const { conversations = [] } = await response.json();
+            if (!conversations.length) return
+            conversationsData.push(...conversations)
+        } catch (error) {
+            console.error(error);
+        }
+    })
+    await Promise.all(promises)
+    const existingConversations = await Conversation.find() || []
+    const formattedConversations = conversationsData.map((conversation: any) => {
+        return { ...conversation, conversationId: conversation.id }
+    })
+    const newConversations = formattedConversations.filter((c: any) => !existingConversations.find(conversation => conversation.conversationId === c.conversationId))
+    await Conversation.create(newConversations)
+    existingConversations.forEach((conv: any) => {
+        const newRecord = formattedConversations.find((c: any) => c.conversationId === conv.conversationId)
+        if (newRecord) {
+            conv.set(newRecord)
+            conv.save()
+        }
+    })
+}
+
+const getCalendars = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/calendars/?locationId=${token.locationId}`;
+    const options = {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token.access_token}`,
+            Version: '2021-04-15',
+            Accept: 'application/json'
+        }
+    };
+
+    try {
+        const response = await fetch(url, options);
+        const { calendars = [] } = await response.json();
+        const existingCalendars = await Calendar.find() || []
+        const formattedCalendars = calendars.map((calendar: any) => {
+            return { ...calendar, calendarId: calendar.id }
+        })
+        const newCalendars = formattedCalendars.filter((c: any) => !existingCalendars.find(calendar => calendar.calendarId === c.calendarId))
+        await Calendar.create(newCalendars)
+        existingCalendars.forEach((cal: any) => {
+            const newRecord = formattedCalendars.find((c: any) => c.calendarId === cal.calendarId)
+            if (newRecord) {
+                cal.set(newRecord)
+                cal.save()
             }
         })
-        while (data.meta?.nextPageUrl) {
-            const response = await fetch(data.meta.nextPageUrl, options);
-            const _data = await response.json();
-            const newContacts = _data.contacts.map((contact: contact) => {
-                let contactType: String | null = null
-                let program: String | null = null
-                let paymentProvider: String | null = null
-                let campDates: Date[] | null = null
-                contact.customFields.forEach((field: { value: String | null }) => {
-                    if (field.value === 'Parent' || field.value === 'Student') {
-                        contactType = field.value
-                    }
-                    if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
-                        paymentProvider = field.value
-                    }
-                    if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
-                        program = field.value
-                    }
-                    if (field.value?.startsWith('camp_')) {
-                        campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
-                    }
-                })
-                if (!contactType) {
-                    return
-                }
-                return {
-                    contactId: contact.id,
-                    companyName: contact.companyName,
-                    firstName: contact.firstNameRaw,
-                    lastName: contact.lastNameRaw,
-                    email: contact.email,
-                    locationId: contact.locationId,
-                    source: contact.source,
-                    dateAdded: contact.dateAdded,
-                    customFields: contact.customFields,
-                    tags: contact.tags,
-                    businessId: contact.businessId,
-                    contactType: contactType,
-                    program: program || 'Unknown',
-                    paymentProvider: paymentProvider || 'Unknown',
-                    campDates: campDates || null
-                }
-            })
-            contacts.push(...newContacts)
-            data = _data
-        }
-        const filteredContacts = contacts.filter(c => c)
-        try {
-            const existingContacts = await Contact.find()
-            existingContacts.forEach(async contact => {
-                try {
-                    contact.set(filteredContacts.find(c => c.contactId === contact.contactId) || {})
-                    contact.save()
-                } catch (error) {
-                    console.log(error)
-                }
-            })
-            const newContacts = filteredContacts.filter(c => !existingContacts.find(contact => contact.contactId === c.contactId))
-            const contactsToUpdate = filteredContacts.map(contact => {
-                const existingContact: any = existingContacts.find(c => c.contactId === contact.contactId)
-                if (existingContact && Object.keys(contact).some(key => contact[key] != existingContact[key])) {
-                    // console.log(contact, existingContact)
-                    return contact;
-                }
-                return;
-            })
-            // console.log(contactsToUpdate)
-            const contactRecords = await Contact.create(newContacts)
-            const families = filteredContacts.map(c => (c.companyName))
-            const uniqueFamilies = Array.from(new Set(families));
-            const familyData = uniqueFamilies.map(family => {
-                return { familyName: family }
-            })
-            const existingFamilies = await Family.find()
-            const newFamilies = familyData.filter(f => !existingFamilies.find(family => family.familyName === f.familyName))
-            const familyRecords = await Family.create(newFamilies)
-
-            const url = `https://services.leadconnectorhq.com/payments/orders?altId=${token.locationId}&altType=location`;
-            const options = {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-            };
-
-            const orderResponse = await fetch(url, options);
-            let orderData = await orderResponse.json();
-            const orders = orderData.data.map((order: { _id: String; }) => {
-                return { ...order, orderId: order._id }
-            })
-            while (orderData.meta?.nextPageUrl) {
-                const orderResponse = await fetch(orderData.meta.nextPageUrl, options);
-                const _orderData = await orderResponse.json();
-                const newOrders = _orderData.data.map((order: { _id: String; }) => {
-                    return { ...order, orderId: order._id }
-                })
-                orders.push(...newOrders)
-                orderData = _orderData
-            }
-            const existingOrders = await Order.find()
-            let newOrders = orders.filter((o: {
-                orderId: string;
-            }) => !existingOrders.find(order => order.orderId === o.orderId))
-            const promises = newOrders.map(async (order: any, i: string | number) => {
-                const url = `https://services.leadconnectorhq.com/payments/orders/${order.orderId}?altId=${token.locationId}&altType=location`;
-                const options = {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-                };
-
-                try {
-                    const response = await fetch(url, options);
-                    const data = await response.json();
-                    newOrders[i] = { ...order, product: data.items[0].product.name, productId: data.items[0].product._id, createdAt: data.createdAt, updatedAt: data.updatedAt }
-                    // console.log(newOrders[i])
-                } catch (error) {
-                    console.error(error);
-                }
-            })
-            await Promise.all(promises)
-            const orderRecords = await Order.create(newOrders)
-            // console.log(newOrders)
-            try {
-                const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
-                const options = {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-                };
-
-                try {
-                    const response = await fetch(url, options);
-                    const { data } = await response.json();
-                    while (data.meta?.nextPageUrl) {
-                        const response = await fetch(data.meta.nextPageUrl, options);
-                        const _data = await response.json();
-                        data.push(..._data.data)
-                        data.meta = _data.meta
-                    }
-                    const existingTransactions = await Transaction.find()
-                    const newTransactions = existingTransactions.filter(t => !data.find((transaction: { _id: string; }) => transaction._id === t.transactionId))
-                    const formattedTransactions = newTransactions.map((transaction:any) => {
-                        return { ...transaction, transactionId: transaction._id }
-                    })
-                    await Transaction.create(formattedTransactions)
-                } catch (error) {
-                    console.error(error);
-                }
-            } catch (error) {
-                console.log(error)
-            }
-
-
-
-
-            return { contactRecords, familyRecords, orderRecords }
-        } catch (error) {
-            throw error
-        }
     } catch (error) {
-        console.log(error);
-        throw error
+        console.error(error);
     }
+    return await Calendar.find()
+}
+
+const getCalendarEvents = async (token: { access_token: string; locationId: string; }, calendars: any) => {
+    const startTime = Date.now()
+    const endTime = startTime + 1000 * 60 * 60 * 24 * 365
+    let calendarEvents: any[] = []
+    const promises = calendars.map(async (calendar: { calendarId: any; }) => {
+        const url = `https://services.leadconnectorhq.com/calendars/events?locationId=${token.locationId}&calendarId=${calendar.calendarId}&startTime=${startTime}&endTime=${endTime}`;
+        const options = {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token.access_token}`,
+                Version: '2021-04-15',
+                Accept: 'application/json'
+            }
+        };
+
+        try {
+            await setTimeout(1000)
+            const response = await fetch(url, options);
+            let { events = [], meta = {} } = await response.json();
+            if (meta?.nextPageUrl) {
+                const response = await fetch(meta.nextPageUrl, options);
+                const { events: _events = []} = await response.json();
+                events.push(..._events)
+            }
+            if (!events.length) return
+            calendarEvents.push(...events)
+        } catch (error) {
+            console.error(error);
+        }
+    })
+
+    await Promise.all(promises)
+
+    const existingCalendarEvents = await CalendarEvent.find() || []
+    const formattedCalendarEvents = calendarEvents.map((calendarEvent: any) => {
+        return { ...calendarEvent, calendarEventId: calendarEvent.id }
+    })
+    const newCalendarEvents = formattedCalendarEvents.filter((c: any) => !existingCalendarEvents.find(calendarEvent => calendarEvent.calendarEventId === c.calendarEventId))
+    await CalendarEvent.create(newCalendarEvents)
+    existingCalendarEvents.forEach((cal: any) => {
+        const newRecord = formattedCalendarEvents.find((c: any) => c.calendarEventId === cal.calendarEventId)
+        if (newRecord) {
+            cal.set(newRecord)
+            cal.save()
+        }
+    })
+}
+
+const getProducts = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/products/?locationId=${token.locationId}`;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+    };
+
+    try {
+        const response = await fetch(url, options);
+        const { products = [] } = await response.json();
+        const existingProducts = await Product.find() || []
+        const formattedProducts = products.map((product: any) => {
+            return { ...product, productId: product._id }
+        })
+        const newProducts = formattedProducts.filter((p: any) => !existingProducts.find(product => product.productId === p.productId))
+        await Product.create(newProducts)
+        existingProducts.forEach((pro: any) => {
+            const newRecord = formattedProducts.find((p: any) => p.productId === pro.productId)
+            if (newRecord) {
+                pro.set(newRecord)
+                pro.save()
+            }
+        })
+    } catch (error) {
+        console.error(error);
+    }
+    const products = await Product.find() || []
+    products.forEach(async (product) => {
+        const url = `https://services.leadconnectorhq.com/products/${product.productId}/price?locationId=${token.locationId}`;
+        const options = {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+        };
+
+        try {
+            await setTimeout(1000)
+            const response = await fetch(url, options);
+            const { prices = [] } = await response.json();
+            product.set({ prices })
+            await product.save();
+        } catch (error) {
+            console.error(error);
+        }
+    })
+}
+
+const getCampaigns = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/campaigns/?locationId=${token.locationId}`;
+const options = {
+  method: 'GET',
+  headers: {Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json'}
+};
+
+try {
+  const response = await fetch(url, options);
+  const { campaigns = [] } = await response.json();
+  const existingCampaigns = await Campaign.find() || []
+  const formattedCampaigns = campaigns.map((campaign: any) => {
+    return { ...campaign, campaignId: campaign._id }
+  })
+  const newCampaigns = formattedCampaigns.filter((c: any) => !existingCampaigns.find(campaign => campaign.campaignId === c.campaignId))
+  await Campaign.create(newCampaigns)
+  existingCampaigns.forEach((cam: any) => {
+    const newRecord = formattedCampaigns.find((c: any) => c.campaignId === cam.campaignId)
+    if (newRecord) {
+      cam.set(newRecord)
+      cam.save()
+    }
+  })
+} catch (error) {
+  console.error(error);
+}
 }

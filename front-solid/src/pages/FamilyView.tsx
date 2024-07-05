@@ -123,7 +123,8 @@ const FamilyView = () => {
                         )}
                     </For>
                     <Col spanLg={4}>
-                        <Typography variant='h6'>Order History</Typography>
+                    {/* <Separator /> */}
+                        <Typography margin={2} variant='h6'>Order History</Typography>
                         <Col spanLg={1}>
                             <Card>
                                 <Table>

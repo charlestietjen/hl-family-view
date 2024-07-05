@@ -15,7 +15,7 @@ function App() {
       setToken(token)
       return
     }
-    window.location.replace(import.meta.env.VITE_AUTH_LINK)
+    // window.location.replace(import.meta.env.VITE_AUTH_LINK)
   })
   return (
     <ErrorBoundary fallback={(err) => <div>{err.message}</div>}>

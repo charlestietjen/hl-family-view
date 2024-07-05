@@ -1,5 +1,10 @@
-import mongoose, { Schema } from 'mongoose'
-import { Contact } from './Contact'
+import mongoose, { Schema, Document } from 'mongoose'
+import { IContact } from './Contact'
+
+interface IFamily extends Document {
+    familyName: string
+    contacts?: IContact[]
+}
 
 const familySchema = new Schema({
     familyName: { type: String, required: true, unique: true },
@@ -20,4 +25,4 @@ const familySchema = new Schema({
         }
     })
 
-export const Family = mongoose.model('Family', familySchema)
+export const Family = mongoose.model<IFamily>('Family', familySchema)

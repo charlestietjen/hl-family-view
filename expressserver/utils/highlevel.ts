@@ -1,5 +1,5 @@
 import { db } from './db'
-import { Token, Contact, Family, Order, CalendarEvent, Calendar, Conversation, Opportunity, Product, Campaign } from '../model/'
+import { Token, Contact, Family, Order, CalendarEvent, Calendar, Conversation, Opportunity, Product, Campaign, Subscription } from '../model/'
 import { Transaction } from '../model/Transaction';
 import { Document, Types } from 'mongoose';
 import { setTimeout } from 'timers/promises';
@@ -115,16 +115,21 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
     })
     const filteredContacts = formattedContacts.filter((c: any) => c)
     getOpportunities(token)
-    await setTimeout(500)
+    await setTimeout(1000)
     getConversations(token)
-    await setTimeout(500)
+    await setTimeout(1000)
     const calendars = await getCalendars(token) || []
-    await setTimeout(500)
+    await setTimeout(1000)
     getCalendarEvents(token, calendars)
-    await setTimeout(500)
+    await setTimeout(1000)
     getProducts(token)
-    await setTimeout(500)
+    await setTimeout(1000)
     getCampaigns(token)
+    await setTimeout(1000)
+    getSubscriptions(token)
+    await setTimeout(1000)
+    getOrders(token)
+    getTransactions(token)
     try {
         const existingContacts = await Contact.find()
         existingContacts.forEach(async contact => {
@@ -145,85 +150,45 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
         const existingFamilies = await Family.find()
         const newFamilies = familyData.filter(f => !existingFamilies.find(family => family.familyName === f.familyName))
         const familyRecords = await Family.create(newFamilies)
-
-        const url = `https://services.leadconnectorhq.com/payments/orders?altId=${token.locationId}&altType=location`;
-        const options = {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-        };
-
-        const orderResponse = await fetch(url, options);
-        let { orders = [], meta = {} } = await orderResponse.json();
-        const orderData = orders.map((order: { _id: String; }) => {
-            return { ...order, orderId: order._id }
-        })
-        while (meta?.nextPageUrl) {
-            const orderResponse = await fetch(orderData.meta.nextPageUrl, options);
-            const _orderData = await orderResponse.json();
-            const newOrders = _orderData.data.map((order: { _id: String; }) => {
-                return { ...order, orderId: order._id }
-            })
-            orders.push(...newOrders)
-            meta = _orderData.meta
-        }
-        const existingOrders = await Order.find()
-        let newOrders = orders.filter((o: {
-            orderId: string;
-        }) => !existingOrders.find(order => order.orderId === o.orderId))
-        const promises = newOrders.map(async (order: any, i: string | number) => {
-            const url = `https://services.leadconnectorhq.com/payments/orders/${order.orderId}?altId=${token.locationId}&altType=location`;
-            const options = {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-            };
-
-            try {
-                const response = await fetch(url, options);
-                const data = await response.json();
-                newOrders[i] = { ...order, product: data.items[0].product.name, productId: data.items[0].product._id, createdAt: data.createdAt, updatedAt: data.updatedAt }
-                // console.log(newOrders[i])
-            } catch (error) {
-                console.error(error);
-            }
-        })
-        await Promise.all(promises)
-        const orderRecords = await Order.create(newOrders)
-        // console.log(newOrders)
-        try {
-            const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
-            const options = {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
-            };
-
-            try {
-                const response = await fetch(url, options);
-                let { orders = [], meta = {} } = await response.json();
-                while (meta?.nextPageUrl) {
-                    const response = await fetch(meta.nextPageUrl, options);
-                    const { orders: _orders = [], meta: _meta = {}} = await response.json();
-                    orders.push(..._orders)
-                    meta = _meta
-                }
-                const existingTransactions = await Transaction.find()
-                const newTransactions = orders.filter((t: any) => !existingTransactions.find(transaction => transaction.transactionId === t._id))
-                const formattedTransactions = newTransactions.map((transaction: any) => {
-                    return { ...transaction, transactionId: transaction._id }
-                })
-                await Transaction.create(formattedTransactions)
-            } catch (error) {
-                console.error(error);
-            }
-        } catch (error) {
-            console.log(error)
-        }
-
-
-
-
-        return { contactRecords, familyRecords, orderRecords }
+        console.log("Database Reinit Done")
+        return { contactRecords, familyRecords }
     } catch (error) {
         throw error
+    }
+}
+
+const getTransactions = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+    };
+
+    try {
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
+        let { data = [], meta = {} } = await response.json()
+        while (meta?.nextPageUrl) {
+            let response = await fetch(meta.nextPageUrl, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(meta.nextPageUrl, options);
+            }
+            const { data: _transactions = [], meta: _meta = {} } = await response.json();
+            data.push(..._transactions)
+            meta = _meta
+        }
+        const existingTransactions = await Transaction.find()
+        const newTransactions = data.filter((t: any) => !existingTransactions.find(transaction => transaction.transactionId === t._id))
+        const formattedTransactions = newTransactions.map((transaction: any) => {
+            return { ...transaction, transactionId: transaction._id }
+        })
+        await Transaction.create(formattedTransactions)
+    } catch (error) {
+        console.error(error);
     }
 }
 
@@ -235,15 +200,19 @@ const getContacts = async (token: { access_token: string; locationId: string; })
     };
 
     try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            console.log("Fetch error: ", response)
-            return
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
         }
         let { contacts, meta } = await response.json();
         while (meta.nextPageUrl) {
-            const response = await fetch(meta.nextPageUrl, options);
-            const {contacts: _contacts = [], meta: _meta = {}} = await response.json();
+            let response = await fetch(meta.nextPageUrl, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
+            const { contacts: _contacts = [], meta: _meta = {} } = await response.json();
             contacts.push(..._contacts)
             meta = _meta
         }
@@ -265,11 +234,14 @@ const getOpportunities = async (token: { access_token: string; locationId: strin
 
         try {
             await setTimeout(1000)
-            const response = await fetch(url, options);
-            const { opportunities } = await response.json();
-            if (!opportunities) return
-            opportunities.push(...opportunities)
-            // console.log(contact.firstName, data)
+            let response = await fetch(url, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
+            const { opportunities: _opportunities = [] } = await response.json();
+            if (!_opportunities.length) return
+            opportunities.push(..._opportunities)
         } catch (error) {
             console.error(error);
         }
@@ -306,7 +278,11 @@ const getConversations = async (token: { access_token: string; locationId: strin
 
         try {
             await setTimeout(1000)
-            const response = await fetch(url, options);
+            let response = await fetch(url, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
             const { conversations = [] } = await response.json();
             if (!conversations.length) return
             conversationsData.push(...conversations)
@@ -342,7 +318,11 @@ const getCalendars = async (token: { access_token: string; locationId: string; }
     };
 
     try {
-        const response = await fetch(url, options);
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
         const { calendars = [] } = await response.json();
         const existingCalendars = await Calendar.find() || []
         const formattedCalendars = calendars.map((calendar: any) => {
@@ -380,11 +360,15 @@ const getCalendarEvents = async (token: { access_token: string; locationId: stri
 
         try {
             await setTimeout(1000)
-            const response = await fetch(url, options);
+            let response = await fetch(url, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
             let { events = [], meta = {} } = await response.json();
             if (meta?.nextPageUrl) {
                 const response = await fetch(meta.nextPageUrl, options);
-                const { events: _events = []} = await response.json();
+                const { events: _events = [] } = await response.json();
                 events.push(..._events)
             }
             if (!events.length) return
@@ -419,7 +403,11 @@ const getProducts = async (token: { access_token: string; locationId: string; })
     };
 
     try {
-        const response = await fetch(url, options);
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
         const { products = [] } = await response.json();
         const existingProducts = await Product.find() || []
         const formattedProducts = products.map((product: any) => {
@@ -447,7 +435,11 @@ const getProducts = async (token: { access_token: string; locationId: string; })
 
         try {
             await setTimeout(1000)
-            const response = await fetch(url, options);
+            let response = await fetch(url, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
             const { prices = [] } = await response.json();
             product.set({ prices })
             await product.save();
@@ -459,28 +451,118 @@ const getProducts = async (token: { access_token: string; locationId: string; })
 
 const getCampaigns = async (token: { access_token: string; locationId: string; }) => {
     const url = `https://services.leadconnectorhq.com/campaigns/?locationId=${token.locationId}`;
-const options = {
-  method: 'GET',
-  headers: {Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json'}
-};
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+    };
 
-try {
-  const response = await fetch(url, options);
-  const { campaigns = [] } = await response.json();
-  const existingCampaigns = await Campaign.find() || []
-  const formattedCampaigns = campaigns.map((campaign: any) => {
-    return { ...campaign, campaignId: campaign._id }
-  })
-  const newCampaigns = formattedCampaigns.filter((c: any) => !existingCampaigns.find(campaign => campaign.campaignId === c.campaignId))
-  await Campaign.create(newCampaigns)
-  existingCampaigns.forEach((cam: any) => {
-    const newRecord = formattedCampaigns.find((c: any) => c.campaignId === cam.campaignId)
-    if (newRecord) {
-      cam.set(newRecord)
-      cam.save()
+    try {
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
+        const { campaigns = [] } = await response.json();
+        const existingCampaigns = await Campaign.find() || []
+        const formattedCampaigns = campaigns.map((campaign: any) => {
+            return { ...campaign, campaignId: campaign._id }
+        })
+        const newCampaigns = formattedCampaigns.filter((c: any) => !existingCampaigns.find(campaign => campaign.campaignId === c.campaignId))
+        await Campaign.create(newCampaigns)
+        existingCampaigns.forEach((cam: any) => {
+            const newRecord = formattedCampaigns.find((c: any) => c.campaignId === cam.campaignId)
+            if (newRecord) {
+                cam.set(newRecord)
+                cam.save()
+            }
+        })
+    } catch (error) {
+        console.error(error);
     }
-  })
-} catch (error) {
-  console.error(error);
 }
+
+const getSubscriptions = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/payments/subscriptions?altId=${token.locationId}&altType=location`;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+    };
+
+    try {
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
+        const { data = [] } = await response.json();
+        const existingSubscriptions = await Subscription.find() || []
+        const formattedSubscriptions = data.map((subscription: any) => {
+            return { ...subscription, subscriptionId: subscription._id }
+        })
+        const newSubscriptions = formattedSubscriptions.filter((s: any) => !existingSubscriptions.find(subscription => subscription.subscriptionId === s.subscriptionId))
+        await Subscription.create(newSubscriptions)
+        existingSubscriptions.forEach((sub: any) => {
+            const newRecord = formattedSubscriptions.find((s: any) => s.subscriptionId === sub.subscriptionId)
+            if (newRecord) {
+                sub.set(newRecord)
+                sub.save()
+            }
+        })
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+const getOrders = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/payments/orders?altId=${token.locationId}&altType=location`;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+    };
+
+    try {
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
+        const { data = [] } = await response.json();
+        const existingOrders = await Order.find() || []
+        const formattedOrders = data.map((order: any) => {
+            return { ...order, orderId: order._id, altId: token.locationId }
+        })
+        const ordersWithItems: any[] = []
+        const promises = await formattedOrders.map(async (order: any, index: number) => {
+            const url = `https://services.leadconnectorhq.com/payments/orders/${order.orderId}?&altId=${token.locationId}&altType=location`;
+            const options = {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token.access_token}`, Version: '2021-07-28', Accept: 'application/json' }
+            };
+
+            try {
+                let response = await fetch(url, options);
+                while (response.status === 429) {
+                    await setTimeout(1000)
+                    response = await fetch(url, options);
+                }
+                const { items = [] } = await response.json();
+                order = { ...order, items }
+                ordersWithItems.push(order)
+            } catch (error) {
+                console.error(error);
+            }
+        })
+        await Promise.all(promises)
+        const newOrders = ordersWithItems.filter((o: any) => !existingOrders.find(order => order.orderId === o.orderId))
+        await Order.create(newOrders)
+        existingOrders.forEach((ord: any) => {
+            const newRecord = ordersWithItems.find((o: any) => o.orderId === ord.orderId)
+            if (newRecord) {
+                ord.set(newRecord)
+                ord.save()
+            }
+        })
+    } catch (error) {
+        console.error(error);
+    }
 }

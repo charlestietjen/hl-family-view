@@ -23,11 +23,35 @@ interface IOrder extends Document {
     dateAdded: Date
     dateUpdated: Date
     orderId: string
-    product: string
-    productId: string
+    items: [itemsSchema]
     createdAt: string
     updatedAt: string
 }
+
+interface itemsSchema {
+    _id: string
+    authorizeAmount: number,
+    locationId: string
+    name: string
+    price: {}
+    product: {
+        name: string
+        productType: string
+        _id: string
+    }
+}
+
+const itemsSchema = new Schema<itemsSchema>({
+    authorizeAmount: { type: Number },
+    locationId: { type: String },
+    name: { type: String },
+    price: {},
+    product: {
+        _id: { type: String, required: true },
+        name: { type: String },
+        productType: { type: String }
+    }
+})
 
 const orderSchema = new Schema({
     altId: { type: String, required: true },
@@ -56,6 +80,7 @@ const orderSchema = new Schema({
     productId: { type: String },
     createdAt: { type: String },
     updatedAt: { type: String },
+    items: { type: [itemsSchema] }
 },
     {
         virtuals: {

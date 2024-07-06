@@ -18,7 +18,7 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    outDir: "../expresserver/dist/public"
+    outDir: "../expressserver/dist/public"
   },
   server: {
     proxy: {

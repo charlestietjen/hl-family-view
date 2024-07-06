@@ -90,7 +90,9 @@ router.route("/api/families")
                         { path: 'orders' },
                         { path: 'calendarEvents' },
                         { path: 'conversations' },
-                        { path: 'opportunities' }]
+                        { path: 'opportunities' },
+                        { path: 'subscriptions' },
+                    ]
                 })
             res.status(200).json({ data: records })
         } catch (e) {
@@ -108,7 +110,9 @@ router.route("/api/family/:id")
                     { path: 'orders' },
                     { path: 'calendarEvents' },
                     { path: 'conversations' },
-                    { path: 'opportunities' }]
+                    { path: 'opportunities' },
+                    { path: 'subscriptions' },
+                ]
             })
         if (existingRecord) {
             res.status(200).json({ data: existingRecord })

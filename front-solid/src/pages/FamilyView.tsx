@@ -1,12 +1,18 @@
-import { For, createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import { useParams, useNavigate } from "@solidjs/router"
 import { CircularProgress, Typography, Button } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Table, TableHeader, TableHead, TableCell, TableRow, TableBody } from '~/components/ui/table'
-import dayjs from 'dayjs'
+// import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+// import { Table, TableHeader, TableHead, TableCell, TableRow, TableBody } from '~/components/ui/table'
+// import dayjs from 'dayjs'
+import { FamilyData } from '../components/FamilyView/FamilyData'
+import { OrdersSection } from '~/components/FamilyView/OrdersSection'
+import { OpportunitiesSection } from '~/components/FamilyView/OpportuntiesSection'
+import { ConversationSection } from '~/components/FamilyView/ConversationSection'
+import { CalendarEventSection } from '~/components/FamilyView/CalendarEventSection'
+import { TransactionSection } from '~/components/FamilyView/TransactionSection'
 
-interface contact {
+export interface contact {
     _id: string,
     firstName: string,
     lastName: string,
@@ -14,14 +20,29 @@ interface contact {
     contactType: string,
     paymentProvider?: string,
     program?: string,
+    createdAt: string,
+    updatedAt: string,
     orders?: [{
         orderId: string,
         product: string,
         date: string,
         subtotal: string,
+        amount: string,
         status: string,
         createdAt: string,
         updatedAt: string,
+        items: [{
+            _id: string
+            authorizeAmount: number,
+            locationId: string
+            name: string
+            price: {}
+            product: {
+                name: string
+                productType: string
+                _id: string
+            }
+        }]
     }],
     transactions?: [{
         transactionId: string,
@@ -41,11 +62,89 @@ interface contact {
         paymentProviderType: string,
         createdAt: string,
         updatedAt: string,
-    }]
+    },],
+    subscriptions: [{
+        subscriptionId: string,
+        contactId: string,
+        contactName: string,
+        contactEmail: string,
+        currency: string,
+        amount: string,
+        status: string,
+        liveMode: string,
+        entityType: string,
+        entityId: string,
+        entitySourceType: string,
+        entitySourceSubType: string,
+        entitySourceName: string,
+        entitySourceId: string,
+        paymentProviderType: string,
+        createdAt: string,
+        updatedAt: string,
+    }],
+    opportunities: [
+        {
+            opportunityId: string
+            name: string
+            monetaryValue: number
+            pipelineId: string
+            pipelineStageId: string
+            assignedTo: string
+            status: string
+            source: string
+            lastStatusChangeAt: Date
+            lastStageChangeAt: Date
+            lastActionDate: Date
+            indexVersion: number
+            createdAt: Date
+            updatedAt: Date
+            contactId: string
+            locationId: string
+            notes: string[]
+            tasks: string[]
+            calendarEvents: string[]
+            customFields: {}
+        }
+    ],
+    conversations: [
+        {
+            conversationId: string
+            contactId: string
+            locationId: string
+            lastMessageBody: string
+            lastMessageType: string
+            type: string
+            unreadCount: number
+            fullName: string
+            contactName: string
+            email: string
+            phone: string
+        }
+    ],
+    calendarEvents: [
+        {
+            calendarEventId: string;
+            address: string;
+            title: string;
+            calendarId: string;
+            locationId: string;
+            contactId: string;
+            groupId: string;
+            appointmentStatus: string;
+            assignedUserId: string;
+            users: string[];
+            notes: string;
+            startTime: string;
+            endTime: string;
+            dateAdded: string;
+            dateUpdated: string;
+            assignedResources: string[];
+        }
+    ]
 }
 
 const FamilyView = () => {
-    const [familyData, setFamilyData] = createSignal<{ _id: string, familyName: string, contacts: [contact] }>()
+    const [familyData, setFamilyData] = createSignal<{ _id: string, familyName: string, contacts: [contact], subscriptionStatus?: string }>()
     const params = useParams()
 
     const navigate = useNavigate()
@@ -65,108 +164,26 @@ const FamilyView = () => {
     return (
         <>
             {!familyData() ? (<CircularProgress />) : (
-
-                <Grid cols={1} colsMd={2} colsLg={4} class='w-full gap-7'>
-
-                    <Col span={1} spanLg={4} style={{ display: 'flex' }}>
-                        <Button variant='outlined' size='small' onClick={() => navigate(-1)}>Back</Button>
+                <Grid cols={12}>
+                    <Col span={1}>
+                        <Button variant='outlined' onClick={() => navigate(-1)}>Back</Button>
                     </Col>
-                    <Col span={1} spanLg={2}>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>{familyData()?.familyName}</CardTitle>
-                            </CardHeader>
-                        </Card>
-                    </Col>
-                    <Col spanLg={2} />
-                    <Col spanLg={4}>
-                        <Typography variant='h6'>Parents</Typography>
-                    </Col>
-                    <For each={familyData()?.contacts}>
-                        {(contact) => (
-                            <>
-                                {contact.contactType === 'Parent' && (
-                                    <Col spanLg={1}>
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle>{`${contact.firstName} ${contact.lastName}`}</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                {`Payment Provider: ${contact.paymentProvider}`}
-                                            </CardContent>
-                                        </Card>
-                                    </Col>
-                                )}
-                            </>
-                        )}
-                    </For>
-
-                    <Col spanLg={4}>
-                        <Typography variant='h6'>Students</Typography>
-                    </Col>
-                    <For each={familyData()?.contacts}>
-                        {(contact) => (
-                            <>
-                                {contact.contactType === 'Student' && (
-                                    <Col spanLg={1}>
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle>{`${contact.firstName} ${contact.lastName}`}</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                {`Program: ${contact.program}`}
-                                            </CardContent>
-                                        </Card>
-                                    </Col>
-                                )}
-                            </>
-                        )}
-                    </For>
-                    <Col spanLg={4}>
-                    {/* <Separator /> */}
+                    {/* <Col span={7} /> */}
+                    <Col span={11}>
+                        <Typography margin={2} variant='h6'>Family Data</Typography>
+                        <FamilyData {...familyData()!} />
                         <Typography margin={2} variant='h6'>Order History</Typography>
-                        <Col spanLg={1}>
-                            <Card>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Order ID</TableHead>
-                                            <TableHead>Date Created</TableHead>
-                                            <TableHead>Last Updated</TableHead>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead>Subtotal</TableHead>
-                                            <TableHead>Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        <For each={familyData()?.contacts}>
-                                            {(member) => (
-                                                <>
-                                                {member.contactType === 'Parent' && member.transactions!.length > 0 && (
-                                                        
-                                                        <For each={member.transactions}>
-                                                            {(order) => (
-                                                                <TableRow>
-                                                                    <TableCell class='text-left'>{order.transactionId}</TableCell>
-                                                                    <TableCell class='text-left'>{dayjs(order.createdAt).format('DD/MMM/YYYY')}</TableCell>
-                                                                    <TableCell class='text-left'>{dayjs(order.updatedAt).format('DD/MMM/YYYY')}</TableCell>
-                                                                    <TableCell class='text-left'>{order.entitySourceName}</TableCell>
-                                                                    <TableCell class='text-left'>{order.amount}</TableCell>
-                                                                    <TableCell class='text-left'>{order.status}</TableCell>
-                                                                </TableRow>
-                                                            )}
-                                                        </For>
-                                                    )
-                                                }
-                                                </>
-                                            )}
-                                        </For>
-                                    </TableBody>
-                                </Table>
-                            </Card>
-                        </Col>
+                        <OrdersSection {...familyData()!} />
+                        <Typography margin={2} variant='h6'>Transaction History</Typography>
+                        <TransactionSection {...familyData()!} />
+                        <Typography margin={2} variant='h6'>Opportunities</Typography>
+                        <OpportunitiesSection {...familyData()!} />
+                        <Typography margin={2} variant='h6'>Conversations</Typography>
+                        <ConversationSection {...familyData()!} />
+                        <Typography margin={2} variant='h6'>Calendar Events</Typography>
+                        <CalendarEventSection {...familyData()!} />
                     </Col>
-                </Grid >
+                </Grid>
             )}
         </>
     )

@@ -76,6 +76,14 @@ const contactSchema = new Schema({
                     foreignField: 'contactId',
                     justOne: false
                 }
+            },
+            subscriptions: {
+                options: {
+                    ref: 'Subscription',
+                    localField: 'contactId',
+                    foreignField: 'contactId',
+                    justOne: false
+                }
             }
         },
         toJSON: {

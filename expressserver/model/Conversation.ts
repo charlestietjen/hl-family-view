@@ -12,7 +12,50 @@ interface IConversation extends Document {
     contactName: string
     email: string
     phone: string
+    messages: IMessage[]
 }
+
+
+interface IMessage extends Document {
+    id: string;
+    type: number;
+    locationId: string;
+    contactId: string;
+    conversationId: string;
+    dateAdded: Date;
+    body: string;
+    direction: string;
+    status: string;
+    contentType: string;
+    attachments: string[];
+    meta: {
+      email: {
+        messageIds: string[];
+      };
+    };
+    source: string;
+  }
+  
+  const messageSchema = new Schema<IMessage>({
+    id: { type: String, required: true },
+    type: { type: Number },
+    locationId: { type: String },
+    contactId: { type: String, required: true },
+    conversationId: { type: String, required: true },
+    dateAdded: { type: Date },
+    body: { type: String },
+    direction: { type: String },
+    status: { type: String },
+    contentType: { type: String },
+    attachments: [{ type: String }],
+    meta: {
+      email: {
+        messageIds: [{ type: String }],
+      },
+    },
+    source: { type: String },
+  }, { _id: false });
+
 
 const conversationSchema = new Schema({
     conversationId: { type: String, required: true, unique: true, index: true },
@@ -26,6 +69,7 @@ const conversationSchema = new Schema({
     contactName: { type: String },
     email: { type: String },
     phone: { type: String },
+    messages: [messageSchema],
 })
 
 export const Conversation = mongoose.model<IConversation>('Conversation', conversationSchema)

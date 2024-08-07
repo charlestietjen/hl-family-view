@@ -1,6 +1,6 @@
 import { createEffect, createSignal } from 'solid-js'
 import { useParams, useNavigate } from "@solidjs/router"
-import { CircularProgress, Typography, Button } from '@suid/material'
+import { CircularProgress, Typography, Button, Stack } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
 // import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 // import { Table, TableHeader, TableHead, TableCell, TableRow, TableBody } from '~/components/ui/table'
@@ -119,6 +119,11 @@ export interface contact {
             contactName: string
             email: string
             phone: string
+            messages: [{
+                id: string
+                body: string
+                dateAdded: string
+            }]
         }
     ],
     calendarEvents: [
@@ -170,18 +175,20 @@ const FamilyView = () => {
                     </Col>
                     {/* <Col span={7} /> */}
                     <Col span={11}>
-                        <Typography margin={2} variant='h6'>Family Data</Typography>
-                        <FamilyData {...familyData()!} />
-                        <Typography margin={2} variant='h6'>Order History</Typography>
-                        <OrdersSection {...familyData()!} />
-                        <Typography margin={2} variant='h6'>Transaction History</Typography>
-                        <TransactionSection {...familyData()!} />
-                        <Typography margin={2} variant='h6'>Opportunities</Typography>
-                        <OpportunitiesSection {...familyData()!} />
-                        <Typography margin={2} variant='h6'>Conversations</Typography>
-                        <ConversationSection {...familyData()!} />
-                        <Typography margin={2} variant='h6'>Calendar Events</Typography>
-                        <CalendarEventSection {...familyData()!} />
+                        <Stack spacing={3}>
+                            <Typography variant='h6'>Family Data</Typography>
+                            <FamilyData {...familyData()!} />
+                            <Typography variant='h6'>Order History</Typography>
+                            <OrdersSection {...familyData()!} />
+                            <Typography variant='h6'>Transaction History</Typography>
+                            <TransactionSection {...familyData()!} />
+                            <Typography variant='h6'>Opportunities</Typography>
+                            <OpportunitiesSection {...familyData()!} />
+                            <Typography variant='h6'>Conversations</Typography>
+                            <ConversationSection {...familyData()!} />
+                            <Typography variant='h6'>Calendar Events</Typography>
+                            <CalendarEventSection {...familyData()!} />
+                        </Stack>
                     </Col>
                 </Grid>
             )}

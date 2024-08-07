@@ -6,7 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev:pb": "concurrently \"cd server && pocketbase serve\" \"cd front-solid && npm run dev\"",
     "dev": "concurrently \"cd expressserver && npm run dev\" \"cd front-solid && npm run dev\"",
-    "build": "cd expressserver && npm run build && cd ../front-solid && npm run build"
+    "build": "cd expressserver && npm run build && cd ../front-solid && npm run build",
+    "deploy": "cd expressserver && npm run deploy"
   },
   "author": "",
   "license": "ISC",

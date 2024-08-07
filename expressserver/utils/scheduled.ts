@@ -1,5 +1,7 @@
 import { Token } from "../model"
-import { refreshToken, initializeDb } from "./highlevel"
+import { refreshToken, initializeDb, postNewCampContacts } from "./highlevel"
+import { minutes, hours } from "./helpers"
+import { getCampRegistrations } from "./ucportal"
 
 export const timedAuthRefresh = () => {
     console.log('Starting scheduled token refresh...')
@@ -7,7 +9,7 @@ export const timedAuthRefresh = () => {
     setInterval(async () => {
         console.log('Starting scheduled token refresh...')
         refreshToken()
-    }, 1000 * 60 * 8)
+    }, hours(8))
 }
 
 export const timedDbReinitialize = async () => {
@@ -28,5 +30,28 @@ export const timedDbReinitialize = async () => {
         }
         const token = tokens[0]
         initializeDb(token)
-    }, 1000 * 60 * 10)
+    }, minutes(10))
+}
+
+export const timedCampRefresh = async () => {
+    console.log('Starting camp refresh')
+    const token = await Token.findOne({})
+    if (!token) {
+        console.log("No token found")
+        return
+    }
+    const newRegistrations = await getCampRegistrations()
+    postNewCampContacts(token, newRegistrations)
+    console.log('Camp refresh finished')
+    setInterval(async () => {
+        console.log('Starting camp refresh')
+        const token = await Token.findOne({})
+        if (!token) {
+            console.log("No token found")
+            return
+        }
+        const newRegistrations = await getCampRegistrations()
+        postNewCampContacts(token, newRegistrations)
+        console.log('Camp refresh finished')
+    }, minutes(30))
 }

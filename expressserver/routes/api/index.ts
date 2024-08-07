@@ -1,13 +1,14 @@
 import { Token, Contact, Family, Calendar, CalendarEvent, Campaign, Conversation, Opportunity, Product, Transaction, Order } from '../../model'
 import express from 'express'
 import { initializeDb } from '../../utils/highlevel'
+import { webhooks } from './webhooks'
 export const router = express.Router()
 
-router.get("/api", (req: any, res: any) => {
+router.get("/", (req: any, res: any) => {
     res.send("API")
 })
 
-router.route("/api/token/:id")
+router.route("/token/:id")
     .get(async (req: any, res: any) => {
         let existingRecord = await Token.findOne({ locationId: req.params.id })
         if (existingRecord) {
@@ -29,7 +30,7 @@ router.route("/api/token/:id")
         }
     })
 
-router.route("/api/token")
+router.route("/token")
     .get(async (req: any, res: any) => {
         const records = await Token.find()
         res.status(200).json({ data: records[0] })
@@ -59,7 +60,7 @@ router.route("/api/token")
         })
     })
 
-router.route("/api/contacts/:id")
+router.route("/contacts/:id")
     .get(async (req: any, res: any) => {
         let existingRecord = await Contact.findOne({ contactId: req.params.id }).populate('orders')
         if (existingRecord) {
@@ -69,7 +70,7 @@ router.route("/api/contacts/:id")
         res.status(400).json({ message: "No contact found" })
     })
 
-router.route("/api/contacts")
+router.route("/contacts")
     .get(async (req: any, res: any) => {
         try {
             const records = await Contact.find().populate('orders')
@@ -79,7 +80,7 @@ router.route("/api/contacts")
         }
     })
 
-router.route("/api/families")
+router.route("/families")
     .get(async (req: any, res: any) => {
         try {
             const records = await Family.find().populate(
@@ -100,7 +101,7 @@ router.route("/api/families")
         }
     })
 
-router.route("/api/family/:id")
+router.route("/family/:id")
     .get(async (req: any, res: any) => {
         let existingRecord = await Family.findOne({ _id: req.params.id }).populate(
             {
@@ -121,7 +122,7 @@ router.route("/api/family/:id")
         res.status(400).json({ message: "No family found" })
     })
 
-router.route("/api/intializeDb").post(async (req: any, res: any) => {
+router.route("/intializeDb").post(async (req: any, res: any) => {
     const { token } = req.body
     const data = await initializeDb(token)
     if (data) {
@@ -131,50 +132,52 @@ router.route("/api/intializeDb").post(async (req: any, res: any) => {
     res.status(400).json({ data })
 })
 
-router.route("/api/calendars")
+router.route("/calendars")
     .get(async (req: any, res: any) => {
         const records = await Calendar.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/calendarevents/")
+router.route("/calendarevents/")
     .get(async (req: any, res: any) => {
         const records = await CalendarEvent.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/campaigns")
+router.route("/campaigns")
     .get(async (req: any, res: any) => {
         const records = await Campaign.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/conversations")
+router.route("/conversations")
     .get(async (req: any, res: any) => {
         const records = await Conversation.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/opportunities")
+router.route("/opportunities")
     .get(async (req: any, res: any) => {
         const records = await Opportunity.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/orders")
+router.route("/orders")
     .get(async (req: any, res: any) => {
         const records = await Order.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/products")
+router.route("/products")
     .get(async (req: any, res: any) => {
         const records = await Product.find()
         res.status(200).json({ data: records })
     })
 
-router.route("/api/transactions")
+router.route("/transactions")
     .get(async (req: any, res: any) => {
         const records = await Transaction.find()
         res.status(200).json({ data: records })
     })
+
+router.use("/webhooks", webhooks)

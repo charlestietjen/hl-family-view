@@ -79,17 +79,19 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
         let paymentProvider: String | null = null
         let campDates: Date[] | null = null
         contact.customFields?.forEach((field: { value: String | null }) => {
-            if (field.value === 'Parent' || field.value === 'Student') {
-                contactType = field.value
-            }
-            if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
-                paymentProvider = field.value
-            }
-            if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
-                program = field.value
-            }
-            if (field.value?.startsWith('camp_')) {
-                campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
+            if (typeof field.value === 'string') {
+                if (field.value === 'Parent' || field.value === 'Student') {
+                    contactType = field.value
+                }
+                if (field.value === 'Stripe' || field.value === 'Wave' || field.value === 'HighLevel') {
+                    paymentProvider = field.value
+                }
+                if (field.value === 'Lite' || field.value === 'Pro' || field.value === 'Max') {
+                    program = field.value
+                }
+                if (field.value?.startsWith('camp_')) {
+                    campDates = field.value.split('camp_').filter((v) => v !== '').map((v) => new Date(v))
+                }
             }
         })
         if (!contactType) {
@@ -296,6 +298,49 @@ const getConversations = async (token: { access_token: string; locationId: strin
         return { ...conversation, conversationId: conversation.id }
     })
     const newConversations = formattedConversations.filter((c: any) => !existingConversations.find(conversation => conversation.conversationId === c.conversationId))
+    for (const conversation of newConversations) {
+        let conversationMessages = []
+        try {
+            const url = `https://services.leadconnectorhq.com/conversations/${conversation.conversationId}/messages`;
+            const options = {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token.access_token}`,
+                    Version: '2021-04-15',
+                    Accept: 'application/json'
+                }
+            };
+
+            try {
+                await setTimeout(1000)
+                let response = await fetch(url, options);
+                while (response.status === 429) {
+                    await setTimeout(1000)
+                    response = await fetch(url, options);
+                }
+                let { messages = { messages: [] } } = await response.json();
+                conversationMessages.push(...messages.messages)
+                while (messages.nextPage) {
+                    await setTimeout(1000)
+                    let lastMessageId = messages.lastMessageId
+                    let nextUrl = `https://services.leadconnectorhq.com/conversations/${lastMessageId}/messages`
+                    response = await fetch(nextUrl, options)
+                    while (response.status === 429) {
+                        await setTimeout(1000)
+                        response = await fetch(nextUrl, options)
+                    }
+                    const { messages: _messages = {} } = await response.json();
+                    messages = _messages
+                    conversationMessages.push(...messages.messages)
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+        conversation.messages = conversationMessages
+    }
     await Conversation.create(newConversations)
     existingConversations.forEach((conv: any) => {
         const newRecord = formattedConversations.find((c: any) => c.conversationId === conv.conversationId)
@@ -565,4 +610,41 @@ const getOrders = async (token: { access_token: string; locationId: string; }) =
     } catch (error) {
         console.error(error);
     }
+}
+
+export const postNewCampContacts = async (token: { access_token: string; locationId: string; }, contacts: any[]) => {
+    const existingContacts = []
+
+    if (!Array.isArray(contacts)) return;
+
+    contacts.forEach(async (contact: any) => {
+        try {
+            const url = 'https://services.leadconnectorhq.com/contacts/';
+            contact.locationId = token.locationId
+            const options = {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token.access_token}`,
+                    Version: '2021-07-28',
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                body: JSON.stringify(contact)
+            };
+            let response = await fetch(url, options);
+            while (response.status === 429) {
+                await setTimeout(1000)
+                response = await fetch(url, options);
+            }
+            if (response.status !== 200) {
+                const error = await response.json()
+                throw new Error(error.message);
+            }
+            const data = await response.json();
+            console.log('Contact created: ', data);
+            await setTimeout(500)
+        } catch (error) {
+            console.error(error);
+        }
+    })
 }

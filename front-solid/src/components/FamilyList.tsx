@@ -1,13 +1,8 @@
 import { Box } from "@suid/material"
 import { createSignal, createEffect, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-// import {
-//     Card,
-//     CardHeader,
-//     CardTitle,
-// } from "~/components/ui/card"
-// import { Grid } from "./ui/grid";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
+import * as CryptoJs from 'crypto-js'
 
 const FamilyList = () => {
     const [families, setFamilies] = createSignal<Array<{ _id: string, familyName: string, contacts: [{ firstName: string, lastName: string, contactType: string }] }>>()
@@ -17,6 +12,22 @@ const FamilyList = () => {
         const _families = await fetch("/api/families")
         const familyData = await _families.json()
         setFamilies(familyData.data)
+    })
+
+    createEffect(async () => {
+        console.log("requesting user data")
+        const key : string = await new Promise((resolve, reject) => {
+            window.parent.postMessage({ message: "REQUEST_USER_DATA" }, "*");
+            window.addEventListener("message", ({ data }) => {
+                if (data.message === "REQUEST_USER_DATA_RESPONSE") {
+                    resolve(data.payload)
+                } else {
+                    reject(data.payload)
+                }
+            })
+        })
+        const decryptedKey = await CryptoJs.AES.decrypt(key, import.meta.env.VITE_SSO_KEY).toString(CryptoJs.enc.Utf8)
+        console.log(decryptedKey)
     })
 
     return (
@@ -51,37 +62,6 @@ const FamilyList = () => {
                 </For>
             </TableBody>
         </Table>
-            {/* <Stack spacing={3}> */ }
-    {/* <Grid cols={3}>
-                <For each={families()}>
-                    {(row) => (
-                        <Card onClick={() => navigate(`/family/${row._id}`)} style={{ cursor: 'pointer', width: '90%' }}>
-                            <CardHeader>
-                                <CardTitle>{row.familyName}</CardTitle>
-                                <CardContent>
-                                    <Typography variant='subtitle2'>Parents</Typography>
-                                    <List>
-                                    <For each={row.contacts}>
-                                        {(member) => {
-                                            if (member.contactType === 'Parent') 
-                                            return <ListItem><Typography variant='body2'>{member.firstName}</Typography></ListItem>}}
-                                    </For>
-                                    </List>
-                                    <Typography variant='subtitle2'>Students</Typography>
-                                    <List>
-                                        <For each={row.contacts}>
-                                            {(member) => {
-                                                if (member.contactType === 'Student')
-                                                return <ListItem><Typography variant='body2'>{member.firstName}</Typography></ListItem>}}
-                                        </For>
-                                    </List>
-                                </CardContent>
-                            </CardHeader>
-                        </Card>
-                    )}
-                </For>
-            </Grid> */}
-    {/* </Stack> */ }
         </Box >
     )
 }

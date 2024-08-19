@@ -612,7 +612,7 @@ const getOrders = async (token: { access_token: string; locationId: string; }) =
     }
 }
 
-export const postNewCampContacts = async (token: { access_token: string; locationId: string; }, contacts: any[]) => {
+export const postContacts = async (token: { access_token: string; locationId: string; }, contacts: any[]) => {
     const existingContacts = []
 
     if (!Array.isArray(contacts)) return;

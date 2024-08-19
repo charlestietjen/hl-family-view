@@ -69,7 +69,7 @@ export const getCampRegistrations = async () => {
         const contacts = await Contact.find()
 
         newRegistrations = newRegistrations.map((registration: any) => {
-            if (!contacts.find((c) => c.email === registration.ucparentemail)?.email) {
+            if (!contacts.find((c) => c.email === registration.ucprimaryemail)?.email) {
                 return {
                     name: registration.ucparentname,
                     email: registration.ucprimaryemail,
@@ -79,6 +79,49 @@ export const getCampRegistrations = async () => {
                 }
             }
         })
+        return newRegistrations
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+export const getActiveRegistrations = async () => {
+    try {
+        const tokenRecord = await UCToken.findOne({})
+        if (!tokenRecord) {
+            console.log("No token record found")
+            return
+        }
+        const token = tokenRecord.token
+        const url = `https://node-api.ultimatecoders.ca/api/v1/registrations/active`
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            }
+        })
+        if (!response) {
+            console.log("No response")
+            return
+        }
+        const data = await response.json()
+        
+        const contacts = await Contact.find()
+
+        let newRegistrations = data.data.map((registration: any) => {
+            if (!contacts.find((c) => c.email === registration.ucprimaryemail)?.email) {
+                return {
+                    name: registration.ucparentname,
+                    email: registration.ucprimaryemail,
+                    phone: registration.ucprimaryphone,
+                    companyName: `${registration.ucparentname.split(' ')[registration.ucparentname.split(' ').length - 1]} Family`,
+                    tags: [`active_registration`],
+                }
+            }
+        })
+        newRegistrations = newRegistrations.filter((registration: any) => registration !== undefined)
         return newRegistrations
     } catch (error) {
         console.error(error)

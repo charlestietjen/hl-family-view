@@ -10,6 +10,7 @@ const FamilyList = () => {
     createEffect(async () => {
         const _families = await fetch("/api/families")
         const familyData = await _families.json()
+        console.log(familyData.data)
         setFamilies(familyData.data)
     })
 

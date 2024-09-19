@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@kobalte/core": "^0.13.3",
+    "@kobalte/core": "^0.13.6",
     "@solidjs/router": "^0.13.5",
     "@suid/icons-material": "^0.7.0",
     "@suid/material": "^0.16.0",

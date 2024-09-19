@@ -1,7 +1,9 @@
-import { Token, Contact, Family, Calendar, CalendarEvent, Campaign, Conversation, Opportunity, Product, Transaction, Order } from '../../model'
+import { Token, Contact, Family, Calendar, CalendarEvent, Campaign, Conversation, Opportunity, Product, Transaction, Order, Subscription } from '../../model'
 import express from 'express'
 import { initializeDb } from '../../utils/highlevel'
 import { webhooks } from './webhooks'
+import { stripe } from '../../main'
+import { cancelSubscription, findSubscriptionByOrderId, pauseSubscription, resumeSubscription } from '../../utils/stripe'
 export const router = express.Router()
 
 router.get("/", (req: any, res: any) => {
@@ -36,7 +38,6 @@ router.route("/token")
         res.status(200).json({ data: records[0] })
     })
     .post(async (req: any, res: any) => {
-        // console.log(req.body)
         if (!req.body) {
             res.status(400).json({ message: "Missing body and/or token" })
             return
@@ -132,52 +133,42 @@ router.route("/intializeDb").post(async (req: any, res: any) => {
     res.status(400).json({ data })
 })
 
-router.route("/calendars")
-    .get(async (req: any, res: any) => {
-        const records = await Calendar.find()
-        res.status(200).json({ data: records })
+router.route("/subscription")
+    // pause route
+    .put(async (req: any, res: any) => {
+        if (!req.body?.id || req.body?.pauseStatus !== 'pause' && req.body?.pauseStatus !== 'resume') {
+            res.status(400).json({ message: "Missing/invalid body and/or token" })
+            return
+        }
+        try {
+            if (!stripe) throw "Stripe not initialized"
+            let existingRecord = await Subscription.findOne({ subscriptionId: req.body.id })
+            const stripeSubscription = await findSubscriptionByOrderId(stripe, req.body.id)
+            if (!stripeSubscription) throw "Subscription not found"
+            const stripeResponse = req.body.pauseStatus === 'pause' ? await pauseSubscription(stripe, stripeSubscription.id) : await resumeSubscription(stripe, stripeSubscription.id)
+            if (!stripeResponse) throw "Failed to update subscription status, is the subscription still active?"
+            res.json(stripeResponse)
+        } catch (e) {
+            res.status(400).json({ e })
+        }
     })
-
-router.route("/calendarevents/")
-    .get(async (req: any, res: any) => {
-        const records = await CalendarEvent.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/campaigns")
-    .get(async (req: any, res: any) => {
-        const records = await Campaign.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/conversations")
-    .get(async (req: any, res: any) => {
-        const records = await Conversation.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/opportunities")
-    .get(async (req: any, res: any) => {
-        const records = await Opportunity.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/orders")
-    .get(async (req: any, res: any) => {
-        const records = await Order.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/products")
-    .get(async (req: any, res: any) => {
-        const records = await Product.find()
-        res.status(200).json({ data: records })
-    })
-
-router.route("/transactions")
-    .get(async (req: any, res: any) => {
-        const records = await Transaction.find()
-        res.status(200).json({ data: records })
+    // cancel route
+    .delete(async (req: any, res: any) => {
+        if (!req.body?.id) {
+            res.status(400).json({ message: "Missing/invalid body and/or token" })
+            return
+        }
+        try {
+            if (!stripe) throw "Stripe not initialized"
+            let existingRecord = await Subscription.findOne({ subscriptionId: req.body.id })
+            const stripeSubscription = await findSubscriptionByOrderId(stripe, req.body.id)
+            if (!stripeSubscription) throw "Subscription not found"
+            const stripeResponse = await cancelSubscription(stripe, stripeSubscription.id)
+            if (!stripeResponse) throw "Failed to update subscription status, is the subscription still active?"
+            res.json(stripeResponse)
+        } catch (e) {
+            res.status(400).json({ e })
+        }
     })
 
 router.use("/webhooks", webhooks)

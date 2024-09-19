@@ -43,7 +43,7 @@ function App() {
           <Route path='/*' component={CircularProgress} />
         ) :
           <FamilyProvider>
-            {!authorized() ? <Route path='/*' component={Unauthorized} /> :
+            {!authorized() && import.meta.env.PROD ? <Route path='/*' component={Unauthorized} /> :
               <>
                 <Route path='/' component={FamilyList} />
                 <Route path='/oauth/' component={OAuth} />

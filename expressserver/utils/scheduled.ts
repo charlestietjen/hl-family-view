@@ -1,5 +1,5 @@
 import { Token } from "../model"
-import { refreshToken, initializeDb, postContacts } from "./highlevel"
+import { refreshToken, initializeDb, postContacts, refreshItemsWithoutWebhooks } from "./highlevel"
 import { minutes, hours } from "./helpers"
 import { getActiveRegistrations, getCampRegistrations } from "./ucportal"
 
@@ -30,6 +30,13 @@ export const timedDbReinitialize = async () => {
         }
         const token = tokens[0]
         initializeDb(token)
+    }, minutes(10))
+}
+
+export const timedRefreshDb = async () => {
+    refreshItemsWithoutWebhooks()
+    setInterval(async () => {
+        refreshItemsWithoutWebhooks()
     }, minutes(10))
 }
 

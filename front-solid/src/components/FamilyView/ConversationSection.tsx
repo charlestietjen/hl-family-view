@@ -1,4 +1,4 @@
-import { contact } from "~/pages/FamilyView"
+import { contact } from "~/contact"
 import { Table, TableHead, TableHeader, TableBody, TableCell, TableRow } from "~/components/ui/table"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/components/ui/collapsible"
 import { For } from "solid-js"

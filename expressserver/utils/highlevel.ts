@@ -116,22 +116,6 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
         }
     })
     const filteredContacts = formattedContacts.filter((c: any) => c)
-    getOpportunities(token)
-    await setTimeout(1000)
-    getConversations(token)
-    await setTimeout(1000)
-    const calendars = await getCalendars(token) || []
-    await setTimeout(1000)
-    getCalendarEvents(token, calendars)
-    await setTimeout(1000)
-    getProducts(token)
-    await setTimeout(1000)
-    getCampaigns(token)
-    await setTimeout(1000)
-    getSubscriptions(token)
-    await setTimeout(1000)
-    getOrders(token)
-    getTransactions(token)
     try {
         const existingContacts = await Contact.find()
         existingContacts.forEach(async contact => {
@@ -159,7 +143,34 @@ export const initializeDb = async (_token: { locationId: String, access_token: S
     }
 }
 
-const getTransactions = async (token: { access_token: string; locationId: string; }) => {
+export const refreshItemsWithoutWebhooks = async () => {
+    const [token] = await Token.find()
+    if (!token) {
+        return
+    }
+    try {
+        getOpportunities(token)
+        await setTimeout(1000)
+        getConversations(token)
+        await setTimeout(1000)
+        const calendars = await getCalendars(token) || []
+        await setTimeout(1000)
+        getCalendarEvents(token, calendars)
+        await setTimeout(1000)
+        getProducts(token)
+        await setTimeout(1000)
+        getCampaigns(token)
+        await setTimeout(1000)
+        getSubscriptions(token)
+        await setTimeout(1000)
+        getOrders(token)
+        getTransactions(token)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export const getTransactions = async (token: { access_token: string; locationId: string; }) => {
     const url = `https://services.leadconnectorhq.com/payments/transactions?altId=${token.locationId}&altType=location`;
     const options = {
         method: 'GET',
@@ -264,7 +275,7 @@ const getOpportunities = async (token: { access_token: string; locationId: strin
     })
 }
 
-const getConversations = async (token: { access_token: string; locationId: string; }) => {
+export const getConversations = async (token: { access_token: string; locationId: string; }) => {
     const contacts = await Contact.find()
     const conversationsData: any[] = []
     const promises = contacts.map(async contact => {

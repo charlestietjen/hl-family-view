@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import { For } from 'solid-js'
 import { Table, TableRow, TableCell, TableHead, TableHeader, TableBody } from '~/components/ui/table'
-import { contact } from '~/pages/FamilyView'
+import { contact } from '~/contact'
 
 export const FamilyData = ({ _id, familyName, contacts }:
     {

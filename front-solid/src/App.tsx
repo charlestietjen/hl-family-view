@@ -27,6 +27,7 @@ function App() {
     })
     setLoading(false)
     if (!key) return
+    console.log(key, token.locationId)
     const decryptedKey = await JSON.parse(CryptoJs.AES.decrypt(key, import.meta.env.VITE_SSO_KEY).toString(CryptoJs.enc.Utf8))
     // @ts-ignore
     console.log(decryptedKey.activeLocation, token.locationId)
@@ -40,13 +41,15 @@ function App() {
     <ErrorBoundary fallback={(err) => <div>{err.message}</div>}>
       <Router>
         {loading() ? (
-          <Route path='/*' component={CircularProgress} />
+          <>
+            <Route path='/*' component={CircularProgress} />
+            <Route path='/oauth/' component={OAuth} />
+          </>
         ) :
           <FamilyProvider>
             {!authorized() && import.meta.env.PROD ? <Route path='/*' component={Unauthorized} /> :
               <>
                 <Route path='/' component={FamilyList} />
-                <Route path='/oauth/' component={OAuth} />
                 <Route path='/family/:id' component={FamilyView} />
               </>}
           </FamilyProvider>

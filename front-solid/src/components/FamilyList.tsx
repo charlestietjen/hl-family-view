@@ -19,7 +19,7 @@ const FamilyList = () => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Family Name</TableHead>
+                        <TableHead>Account Name</TableHead>
                         <TableHead>Contact Name</TableHead>
                         <TableHead>Contact Type</TableHead>
                     </TableRow>

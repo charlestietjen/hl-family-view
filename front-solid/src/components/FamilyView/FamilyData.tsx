@@ -14,8 +14,8 @@ export const FamilyData = ({ _id, familyName, contacts }:
 
 
     const tableHeads = [
-        'Family ID',
-        'Family Name',
+        // 'Account ID',
+        'Account Name',
         'Contact Name',
         'Contact Type',
         'Product Name',
@@ -47,9 +47,9 @@ export const FamilyData = ({ _id, familyName, contacts }:
                         return (
                             <>
                                 <TableRow>
-                                    <TableCell class='text-left'>
+                                    {/* <TableCell class='text-left'>
                                         {_id}
-                                    </TableCell>
+                                    </TableCell> */}
                                     <TableCell class='text-left'>
                                         {familyName}
                                     </TableCell>

@@ -2,12 +2,12 @@ import { createEffect, createSignal } from 'solid-js'
 import { useParams, useNavigate } from "@solidjs/router"
 import { CircularProgress, Typography, Button, Stack } from '@suid/material'
 import { Col, Grid } from '../components/ui/grid'
-// import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 // import { Table, TableHeader, TableHead, TableCell, TableRow, TableBody } from '~/components/ui/table'
 // import dayjs from 'dayjs'
 import { FamilyData } from '../components/FamilyView/FamilyData'
 import { OrdersSection } from '~/components/FamilyView/OrdersSection'
-import { OpportunitiesSection } from '~/components/FamilyView/OpportuntiesSection'
+import { OpportunitiesSection } from '~/components/FamilyView/OpportunitiesSection'
 import { ConversationSection } from '~/components/FamilyView/ConversationSection'
 import { CalendarEventSection } from '~/components/FamilyView/CalendarEventSection'
 import { TransactionSection } from '~/components/FamilyView/TransactionSection'
@@ -42,20 +42,50 @@ const FamilyView = () => {
                     {/* <Col span={7} /> */}
                     <Col span={11}>
                         <Stack spacing={3}>
-                            <Typography variant='h6'>Family Data</Typography>
-                            <FamilyData {...familyData()!} />
-                            <Typography variant='h6'>Subscriptions</Typography>
-                            <SubscriptionsSection {...familyData()!} />
-                            <Typography variant='h6'>Order History</Typography>
-                            <OrdersSection {...familyData()!} />
-                            <Typography variant='h6'>Transaction History</Typography>
-                            <TransactionSection {...familyData()!} />
-                            <Typography variant='h6'>Opportunities</Typography>
-                            <OpportunitiesSection {...familyData()!} />
-                            <Typography variant='h6'>Conversations</Typography>
-                            <ConversationSection {...familyData()!} />
-                            <Typography variant='h6'>Calendar Events</Typography>
-                            <CalendarEventSection {...familyData()!} />
+                            <Card>
+                                <CardHeader>
+                                    <Typography variant='h6'>Account Data</Typography>
+                                </CardHeader>
+                                <CardContent>
+                                    <FamilyData {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <Typography variant='h6'>Conversations</Typography>
+                                </CardHeader>
+                                <CardContent>
+                                    <ConversationSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent>
+                                    <OpportunitiesSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <Typography variant='h6'>Calendar Events</Typography>
+                                </CardHeader>
+                                <CardContent>
+                                    <CalendarEventSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent>
+                                    <OrdersSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent>
+                                    <SubscriptionsSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent>
+                                    <TransactionSection {...familyData()!} />
+                                </CardContent>
+                            </Card>
                         </Stack>
                     </Col>
                 </Grid>

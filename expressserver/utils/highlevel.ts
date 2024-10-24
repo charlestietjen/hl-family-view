@@ -238,6 +238,8 @@ const getContacts = async (token: { access_token: string; locationId: string; })
 const getOpportunities = async (token: { access_token: string; locationId: string; }) => {
     const contacts = await Contact.find()
     const opportunities: any[] = []
+    const pipelines = await getPipelines(token)
+    console.log(pipelines[0].stages)
     const promises = contacts.map(async contact => {
         const url = `https://services.leadconnectorhq.com/opportunities/search?location_id=${token.locationId}&contact_id=${contact.contactId}`;
         const options = {
@@ -262,6 +264,9 @@ const getOpportunities = async (token: { access_token: string; locationId: strin
     await Promise.all(promises)
     const existingOpportunities = await Opportunity.find()
     const formattedOpportunities = opportunities.map((opportunity: any) => {
+        const matchedPipeline = pipelines.find((p: any) => p.id === opportunity.pipelineId)
+        if (!matchedPipeline) return
+        opportunity.pipelineStage = matchedPipeline.stages.find((s: any) => s.id === opportunity.pipelineStageId).name
         return { ...opportunity, opportunityId: opportunity.id }
     })
     const newOpportunities = formattedOpportunities.filter((o: any) => !existingOpportunities.find(opportunity => opportunity.opportunityId === o.opportunityId))
@@ -658,4 +663,24 @@ export const postContacts = async (token: { access_token: string; locationId: st
             console.error(error);
         }
     })
+}
+
+export const getPipelines = async (token: { access_token: string; locationId: string; }) => {
+    const url = `https://services.leadconnectorhq.com/opportunities/pipelines?locationId=${token.locationId}`;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token.access_token}` , Version: '2021-07-28', Accept: 'application/json' }
+    };
+
+    try {
+        let response = await fetch(url, options);
+        while (response.status === 429) {
+            await setTimeout(1000)
+            response = await fetch(url, options);
+        }
+        const data = await response.json();
+        return data.pipelines;
+    } catch (error) {
+        console.error(error);
+    }
 }

@@ -1,6 +1,7 @@
 import { contact } from "~/contact"
 import { Table, TableHead, TableHeader, TableBody, TableCell, TableRow } from "~/components/ui/table"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "~/components/ui/collapsible"
+import { Accordion, AccordionTrigger, AccordionContent, AccordionItem } from "~/components/ui/accordion"
 import { For } from "solid-js"
 import { Stack, Typography } from "@suid/material"
 import dayjs from "dayjs"
@@ -13,14 +14,14 @@ export const ConversationSection = ({ contacts }:
         contacts: contact[]
     }) => {
     const tableHeads: string[] = [
-        'Conversation Id',
+        // 'Conversation Id',
         'Contact Name',
         'Last Message Body',
         'Last Message Type',
         'Unread Count',
     ]
     const messagesHeads: string[] = [
-        'Message Id',
+        // 'Message Id',
         'Date Added',
         'Message Body',
     ]
@@ -45,9 +46,9 @@ export const ConversationSection = ({ contacts }:
                                     <For each={contact.conversations}>
                                         {conversation => (
                                             <TableRow class='text-left'>
-                                                <TableCell>
+                                                {/* <TableCell>
                                                     {conversation.conversationId}
-                                                </TableCell>
+                                                </TableCell> */}
                                                 <TableCell>
                                                     {conversation.contactName}
                                                 </TableCell>
@@ -74,46 +75,45 @@ export const ConversationSection = ({ contacts }:
 
                     <For each={contact.conversations}>
                         {conversation => (
-                            <Collapsible>
-                                <CollapsibleTrigger>
-                                    <Stack direction="row" spacing={2}>
-                                        <Typography variant="h6">Messages for Conversation Id: {conversation.conversationId}</Typography>
-                                        <FaSolidChevronDown />
-                                    </Stack>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <For each={messagesHeads}>
-                                                    {(tableHead) =>
-                                                        <TableHead>
-                                                            {tableHead}
-                                                        </TableHead>}
-                                                </For>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            <For each={conversation.messages}>
-                                                {message => (
+                            <Accordion collapsible>
+                                <AccordionItem value={conversation.conversationId}>
+                                    <AccordionTrigger>
+                                            <Typography variant="h6">Messages: {conversation.contactName}</Typography>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <For each={messagesHeads}>
+                                                        {(tableHead) =>
+                                                            <TableHead>
+                                                                {tableHead}
+                                                            </TableHead>}
+                                                    </For>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                <For each={conversation.messages}>
+                                                    {message => (
 
-                                                    <TableRow class='text-left'>
-                                                        <TableCell>
-                                                            {message.id}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {dayjs(message.dateAdded).format('YYYY-MM-DD')}
-                                                        </TableCell>
-                                                        <TableCell style={{ width: '75%' }}>
-                                                            {typeof message.body === 'string' ? message.body.slice(0, 200): "N/A"}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </For>
-                                        </TableBody>
-                                    </Table>
-                                </CollapsibleContent>
-                            </Collapsible>
+                                                        <TableRow class='text-left'>
+                                                            {/* <TableCell>
+                                                                {message.id}
+                                                            </TableCell> */}
+                                                            <TableCell>
+                                                                {dayjs(message.dateAdded).format('YYYY-MM-DD')}
+                                                            </TableCell>
+                                                            <TableCell style={{ width: '75%' }}>
+                                                                {typeof message.body === 'string' ? message.body.slice(0, 200) : "N/A"}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </For>
+                                            </TableBody>
+                                        </Table>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                         )}
                     </For>
                 )}

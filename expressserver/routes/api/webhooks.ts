@@ -1,5 +1,6 @@
 import express from 'express'
-import { Contact, Family } from '../../model'
+import { Contact, Conversation, Family, Token } from '../../model'
+import { getPipelines } from '../../utils/highlevel'
 export const webhooks = express.Router()
 
 webhooks.route("/").post(async (req: any, res: any) => {
@@ -56,6 +57,27 @@ webhooks.route("/").post(async (req: any, res: any) => {
                 break
             case "ContactDelete":
                 await Contact.findOneAndDelete({ contactId: req.body.id })
+                break
+            case "InboundMessage":
+                await Conversation.findOneAndUpdate({ conversationId: req.body.conversationId }, { $push: { messages: req.body } })
+                break
+            case "OutboundMessage":
+                await Conversation.findOneAndUpdate({ conversationId: req.body.conversationId }, { $push: { messages: req.body } })
+                break
+            case "OpportunityCreate":
+                await Contact.findOneAndUpdate({ contactId: req.body.contactId }, { $push: { opportunities: req.body } })
+                break
+            case "OpportunityUpdate":
+                const token = await Token.findOne()
+                if (!token) break
+                const pipelines = await getPipelines(token)
+                const matchedPipeline = pipelines.find((p: any) => p.id === req.body.pipelineId)
+                if (!matchedPipeline) break
+                req.body.pipelineStage = matchedPipeline.stages.find((s: any) => s.id === req.body.pipelineStageId).name
+                await Contact.findOneAndUpdate({ contactId: req.body.contactId }, { $push: { opportunities: req.body } })
+                break
+            case "OpportunityDelete":
+                await Contact.findOneAndUpdate({ contactId: req.body.contactId }, { $pull: { opportunities: { opportunityId: req.body.opportunityId } } })
                 break
             default:
                 break

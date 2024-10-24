@@ -6,6 +6,7 @@ interface IOpportunity extends Document {
     monetaryValue: number
     pipelineId: string
     pipelineStageId: string
+    pipelineStage: string
     assignedTo: string
     status: string
     source: string
@@ -29,6 +30,7 @@ const opportunitySchema = new Schema({
     monetaryValue: { type: Number },
     pipelineId: { type: String },
     pipelineStageId: { type: String },
+    pipelineStage: { type: String },
     assignedTo: { type: String },
     status: { type: String },
     source: { type: String },

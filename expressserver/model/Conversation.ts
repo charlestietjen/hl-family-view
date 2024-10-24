@@ -18,7 +18,7 @@ interface IConversation extends Document {
 
 interface IMessage extends Document {
     id: string;
-    type: number;
+    type: string;
     locationId: string;
     contactId: string;
     conversationId: string;
@@ -28,6 +28,7 @@ interface IMessage extends Document {
     status: string;
     contentType: string;
     attachments: string[];
+    messageId: string;
     meta: {
       email: {
         messageIds: string[];
@@ -38,7 +39,7 @@ interface IMessage extends Document {
   
   const messageSchema = new Schema<IMessage>({
     id: { type: String, required: true },
-    type: { type: Number },
+    type: { type: String },
     locationId: { type: String },
     contactId: { type: String, required: true },
     conversationId: { type: String, required: true },
@@ -48,6 +49,7 @@ interface IMessage extends Document {
     status: { type: String },
     contentType: { type: String },
     attachments: [{ type: String }],
+    messageId: { type: String },
     meta: {
       email: {
         messageIds: [{ type: String }],

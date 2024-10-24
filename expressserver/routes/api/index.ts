@@ -96,7 +96,8 @@ router.route("/families")
                         { path: 'subscriptions' },
                     ]
                 })
-            res.status(200).json({ data: records })
+            const filteredRecords = records.filter((record: any) => record.contacts.length > 0)
+            res.status(200).json({ data: filteredRecords })
         } catch (e) {
             res.status(400).json({ e })
         }

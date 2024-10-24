@@ -6,7 +6,7 @@ import { Router, Route } from '@solidjs/router'
 import { FamilyProvider } from './utils/FamilyProvider'
 import { FamilyView, OAuth, Unauthorized } from './pages'
 import * as CryptoJs from 'crypto-js'
-import { CircularProgress } from '@suid/material'
+import { CircularProgress, Box, Typography, Stack, Card, CardContent } from '@suid/material'
 
 function App() {
   const [authorized, setAuthorized] = createSignal(false)
@@ -39,22 +39,29 @@ function App() {
 
   return (
     <ErrorBoundary fallback={(err) => <div>{err.message}</div>}>
-      <Router>
-        {loading() ? (
-          <>
-            <Route path='/*' component={CircularProgress} />
-            <Route path='/oauth/' component={OAuth} />
-          </>
-        ) :
-          <FamilyProvider>
-            {!authorized() && import.meta.env.PROD ? <Route path='/*' component={Unauthorized} /> :
-              <>
-                <Route path='/' component={FamilyList} />
-                <Route path='/family/:id' component={FamilyView} />
-              </>}
-          </FamilyProvider>
-        }
-      </Router>
+      <Stack spacing={4}>
+        <Box component={'header'} sx={{ borderBottom: 1, borderColor: 'divider', paddingBottom: 1}}>
+          <Typography variant='h6' textAlign='left'>
+            Unified Inbox
+          </Typography>
+        </Box>
+        <Router>
+          {loading() ? (
+            <>
+              <Route path='/*' component={CircularProgress} />
+              <Route path='/oauth/' component={OAuth} />
+            </>
+          ) :
+            <FamilyProvider>
+              {!authorized() && import.meta.env.PROD ? <Route path='/*' component={Unauthorized} /> :
+                <>
+                  <Route path='/' component={FamilyList} />
+                  <Route path='/family/:id' component={FamilyView} />
+                </>}
+            </FamilyProvider>
+          }
+        </Router>
+      </Stack>
     </ErrorBoundary>
   )
 }

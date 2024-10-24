@@ -90,6 +90,7 @@ export interface contact {
             tasks: string[]
             calendarEvents: string[]
             customFields: {}
+            pipelineStage: string
         }
     ],
     conversations: [
